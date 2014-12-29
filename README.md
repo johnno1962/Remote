@@ -58,7 +58,7 @@ the  Plugin is "licensed for download any use during iPhone development
 until the end of March 2015" and may not be redistributed other than 
 through github. I've made the source available for as much of the code 
 as possible should you want to change the interface but held back one 
-source file in a precompiled library for now. Please file any bug reports
+source file in a precompiled library. Please file any bug reports
 or fixes using github issues and pull requests if you encounter any problems.
 
 ### As ever:
