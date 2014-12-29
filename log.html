@@ -1,0 +1,62 @@
+<html><header><style>
+
+body, table { font: 8pt Arial; margin: 0px; border: 3px inset lightgrey; }
+img.snapshot { border: 1px outset grey; }
+div.complete { color: darkgreen; }
+div.active { color: orange; }
+
+
+</style><script>
+
+function $(id) {
+    return id ? document.getElementById(id) : $('macro');
+}
+
+function logSet( html ) {
+    $().innerHTML = " "+html;
+}
+
+var id = 0;
+
+function logAdd( entry ) {
+    var div = document.createElement("div");
+    if ( entry.match( /^Ended / ) )
+        entry += "<p>";
+    div.innerHTML = " "+entry;
+    div.id = ++id;
+    $().appendChild(div);
+    scrollTo(0,1000000);
+}
+
+var prevID, divIDs;
+
+function logAnimate( divID ) {
+    if ( !prevID )
+        divIDs = [];
+    else
+        $(prevID).className = "complete";
+    if ( divID == "" )
+        divID = null;
+    if ( divID ) {
+        $(divID).className = "active";
+        divIDs.push(divID);
+    }
+    else {
+        for ( var i=0 ; i<divIDs.length ; i++ )
+            $(divIDs[i]).className = "";
+        ids = null;
+    }
+    prevID = divID;
+}
+
+function logUpdate( divID, snapshotHTML ) {
+    $(divID).innerHTML = snapshotHTML;
+}
+
+function showSnapshot(img) {
+    prompt("snapshot",img.parentElement.children[2].innerText);
+}
+
+</script></header><body><div id='macro'>
+This area is fully editable and can be annotated.
+</div>

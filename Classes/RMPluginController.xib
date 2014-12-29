@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="6221" systemVersion="14B25" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
+    <dependencies>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="6221"/>
+    </dependencies>
+    <objects>
+        <customObject id="-2" userLabel="File's Owner" customClass="RMPluginController">
+            <connections>
+                <outlet property="remote" destination="VRc-QF-V8d" id="kbn-IK-0AV"/>
+                <outlet property="remoteMenu" destination="n3e-Uk-6gd" id="8QU-dm-GLs"/>
+                <outlet property="windowItem" destination="Ujz-St-qcu" id="Sr3-hZ-6Sy"/>
+            </connections>
+        </customObject>
+        <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+        <customObject id="-3" userLabel="Application" customClass="NSObject"/>
+        <menuItem title="Remote" id="n3e-Uk-6gd">
+            <modifierMask key="keyEquivalentModifierMask"/>
+            <menu key="submenu" title="Remote" id="o2h-l3-Q1f">
+                <items>
+                    <menuItem title="Load" id="M7p-Xx-vjF" userLabel="Load">
+                        <modifierMask key="keyEquivalentModifierMask"/>
+                        <connections>
+                            <action selector="load:" target="-2" id="xp5-Sb-JlE"/>
+                        </connections>
+                    </menuItem>
+                    <menuItem title="Patch App" id="VLy-5t-UTQ" userLabel="Patch App">
+                        <modifierMask key="keyEquivalentModifierMask"/>
+                        <connections>
+                            <action selector="patch:" target="-2" id="oU3-o3-3Oc"/>
+                        </connections>
+                    </menuItem>
+                    <menuItem title="Unpatch App" id="Pct-pl-sPg" userLabel="Unpatch App">
+                        <modifierMask key="keyEquivalentModifierMask"/>
+                        <connections>
+                            <action selector="unpatch:" target="-2" id="21a-NA-ZFg"/>
+                        </connections>
+                    </menuItem>
+                </items>
+            </menu>
+        </menuItem>
+        <customObject id="VRc-QF-V8d" customClass="RMWindowController">
+            <connections>
+                <outlet property="replayMenu" destination="o2h-l3-Q1f" id="tUC-jL-Hc5"/>
+            </connections>
+        </customObject>
+        <menuItem title="Remote Plugin" id="Ujz-St-qcu" userLabel="Remote Plugin">
+            <modifierMask key="keyEquivalentModifierMask"/>
+            <connections>
+                <action selector="load:" target="-2" id="XpR-q7-tpV"/>
+            </connections>
+        </menuItem>
+    </objects>
+</document>

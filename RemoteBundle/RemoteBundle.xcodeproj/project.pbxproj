@@ -1,0 +1,306 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BBBD4EF81A4AE195009969E1 /* RemoteBundle.m in Sources */ = {isa = PBXBuildFile; fileRef = BBBD4EF71A4AE195009969E1 /* RemoteBundle.m */; };
+		BBBD4EFB1A4AE1A3009969E1 /* RemoteBundle-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = BBBD4EF91A4AE1A3009969E1 /* RemoteBundle-Info.plist */; };
+		BBDEF78519293F35000F1C04 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBDEF78419293F35000F1C04 /* CoreFoundation.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		BB126F36192DAE8400416E57 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		BB1EEDE11A4EF6E1004BAD5B /* RemoteCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RemoteCapture.h; path = ../../Classes/RemoteCapture.h; sourceTree = "<group>"; };
+		BBBD4EF71A4AE195009969E1 /* RemoteBundle.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RemoteBundle.m; sourceTree = "<group>"; };
+		BBBD4EF91A4AE1A3009969E1 /* RemoteBundle-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "RemoteBundle-Info.plist"; sourceTree = "<group>"; };
+		BBBD4EFA1A4AE1A3009969E1 /* RemoteBundle-Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "RemoteBundle-Prefix.pch"; sourceTree = "<group>"; };
+		BBDEF78119293F35000F1C04 /* RemoteBundle.loader */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteBundle.loader; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBDEF78419293F35000F1C04 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BBDEF77E19293F35000F1C04 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBDEF78519293F35000F1C04 /* CoreFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		BBDEF77819293F35000F1C04 = {
+			isa = PBXGroup;
+			children = (
+				BBDEF78619293F35000F1C04 /* RemoteBundle */,
+				BBDEF78319293F35000F1C04 /* Frameworks */,
+				BBDEF78219293F35000F1C04 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BBDEF78219293F35000F1C04 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BBDEF78119293F35000F1C04 /* RemoteBundle.loader */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BBDEF78319293F35000F1C04 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BB126F36192DAE8400416E57 /* UIKit.framework */,
+				BBDEF78419293F35000F1C04 /* CoreFoundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BBDEF78619293F35000F1C04 /* RemoteBundle */ = {
+			isa = PBXGroup;
+			children = (
+				BB1EEDE11A4EF6E1004BAD5B /* RemoteCapture.h */,
+				BBBD4EF71A4AE195009969E1 /* RemoteBundle.m */,
+				BBDEF78719293F35000F1C04 /* Supporting Files */,
+			);
+			path = RemoteBundle;
+			sourceTree = "<group>";
+		};
+		BBDEF78719293F35000F1C04 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				BBBD4EF91A4AE1A3009969E1 /* RemoteBundle-Info.plist */,
+				BBBD4EFA1A4AE1A3009969E1 /* RemoteBundle-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		BBDEF78019293F35000F1C04 /* RemoteBundle */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBDEF78F19293F35000F1C04 /* Build configuration list for PBXNativeTarget "RemoteBundle" */;
+			buildPhases = (
+				BBDEF77D19293F35000F1C04 /* Sources */,
+				BBDEF77E19293F35000F1C04 /* Frameworks */,
+				BBDEF77F19293F35000F1C04 /* Resources */,
+				BB3B172C1A16CF3C00DB25CE /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RemoteBundle;
+			productName = RemoteBundle;
+			productReference = BBDEF78119293F35000F1C04 /* RemoteBundle.loader */;
+			productType = "com.apple.product-type.bundle";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BBDEF77919293F35000F1C04 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0510;
+				ORGANIZATIONNAME = "John Holdsworth";
+			};
+			buildConfigurationList = BBDEF77C19293F35000F1C04 /* Build configuration list for PBXProject "RemoteBundle" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = BBDEF77819293F35000F1C04;
+			productRefGroup = BBDEF78219293F35000F1C04 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BBDEF78019293F35000F1C04 /* RemoteBundle */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BBDEF77F19293F35000F1C04 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBBD4EFB1A4AE1A3009969E1 /* RemoteBundle-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		BB3B172C1A16CF3C00DB25CE /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [[ \"$PLATFORM_NAME\" == \"iphoneos\" ]];\nthen\n    /usr/bin/codesign --force --deep --sign \"$CODE_SIGN_IDENTITY\" \"$CODESIGNING_FOLDER_PATH\"\nfi";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BBDEF77D19293F35000F1C04 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBBD4EF81A4AE195009969E1 /* RemoteBundle.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		BBDEF78D19293F35000F1C04 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+					"XPROBE_BUNDLE=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = (
+					"-undefined",
+					dynamic_lookup,
+				);
+			};
+			name = Debug;
+		};
+		BBDEF78E19293F35000F1C04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = "XPROBE_BUNDLE=1";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = (
+					"-undefined",
+					dynamic_lookup,
+				);
+			};
+			name = Release;
+		};
+		BBDEF79019293F35000F1C04 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "RemoteBundle/RemoteBundle-Prefix.pch";
+				INFOPLIST_FILE = "RemoteBundle/RemoteBundle-Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/Users/johnholdsworth/Developer/XprobePlugin,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = loader;
+			};
+			name = Debug;
+		};
+		BBDEF79119293F35000F1C04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "RemoteBundle/RemoteBundle-Prefix.pch";
+				INFOPLIST_FILE = "RemoteBundle/RemoteBundle-Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/Users/johnholdsworth/Developer/XprobePlugin,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = loader;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BBDEF77C19293F35000F1C04 /* Build configuration list for PBXProject "RemoteBundle" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BBDEF78D19293F35000F1C04 /* Debug */,
+				BBDEF78E19293F35000F1C04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BBDEF78F19293F35000F1C04 /* Build configuration list for PBXNativeTarget "RemoteBundle" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BBDEF79019293F35000F1C04 /* Debug */,
+				BBDEF79119293F35000F1C04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BBDEF77919293F35000F1C04 /* Project object */;
+}

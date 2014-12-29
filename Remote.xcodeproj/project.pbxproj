@@ -1,0 +1,356 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		7F2EB89C145057F200E97A87 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F2EB899145057EA00E97A87 /* AppKit.framework */; };
+		BB5CF63A1912DCC50052E10B /* RMPluginController.m in Sources */ = {isa = PBXBuildFile; fileRef = BB5CF6391912DCC50052E10B /* RMPluginController.m */; };
+		BB82F0CD1913D15F0015AE7A /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = BB82F0CC1913D15F0015AE7A /* README.md */; };
+		BB90CD371A5018BA009881C5 /* libRemoteLib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BB90CD361A5018BA009881C5 /* libRemoteLib.a */; };
+		BBBD4F081A4AE1FE009969E1 /* RMImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = BBBD4F011A4AE1FE009969E1 /* RMImageView.m */; };
+		BBBD4F091A4AE1FE009969E1 /* RMMacroManager.m in Sources */ = {isa = PBXBuildFile; fileRef = BBBD4F031A4AE1FE009969E1 /* RMMacroManager.m */; };
+		BBBD4F0A1A4AE1FE009969E1 /* RMWindowController.m in Sources */ = {isa = PBXBuildFile; fileRef = BBBD4F051A4AE1FE009969E1 /* RMWindowController.m */; };
+		BBBD4F0B1A4AE1FE009969E1 /* RMWindowController.xib in Resources */ = {isa = PBXBuildFile; fileRef = BBBD4F061A4AE1FE009969E1 /* RMWindowController.xib */; };
+		BBBD4F541A4AEA35009969E1 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = BBBD4F531A4AEA35009969E1 /* libz.dylib */; };
+		BBBD4F581A4AF4FA009969E1 /* iphone.png in Resources */ = {isa = PBXBuildFile; fileRef = BBBD4F561A4AF4FA009969E1 /* iphone.png */; };
+		BBBD4F591A4AF4FA009969E1 /* log.html in Resources */ = {isa = PBXBuildFile; fileRef = BBBD4F571A4AF4FA009969E1 /* log.html */; };
+		BBBD4F5A1A4AF534009969E1 /* RemoteCapture.h in Resources */ = {isa = PBXBuildFile; fileRef = BBBD4EFC1A4AE1FE009969E1 /* RemoteCapture.h */; };
+		BBBD4F5B1A4AF534009969E1 /* RemoteHeaders.h in Resources */ = {isa = PBXBuildFile; fileRef = BBBD4EFD1A4AE1FE009969E1 /* RemoteHeaders.h */; };
+		BBBD4F5D1A4AF5B1009969E1 /* patch.py in Resources */ = {isa = PBXBuildFile; fileRef = BBBD4F5C1A4AF5B1009969E1 /* patch.py */; };
+		BBBD4F5F1A4AF5C6009969E1 /* unpatch.py in Resources */ = {isa = PBXBuildFile; fileRef = BBBD4F5E1A4AF5C6009969E1 /* unpatch.py */; };
+		BBF5D8E31912DFCA0037CE2E /* RMPluginController.xib in Resources */ = {isa = PBXBuildFile; fileRef = BBF5D8E21912DFCA0037CE2E /* RMPluginController.xib */; };
+		DA1B5D020E64686800921439 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 089C1672FE841209C02AAC07 /* Foundation.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BBBD4EB21A4AE027009969E1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = BBDEF78119293F35000F1C04;
+			remoteInfo = RemoteBundle;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		089C1672FE841209C02AAC07 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
+		7F2EB899145057EA00E97A87 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		8D5B49B6048680CD000E48DA /* Remote.xcplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Remote.xcplugin; sourceTree = BUILT_PRODUCTS_DIR; };
+		8D5B49B7048680CD000E48DA /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB5CF6381912DCC50052E10B /* RMPluginController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMPluginController.h; sourceTree = "<group>"; };
+		BB5CF6391912DCC50052E10B /* RMPluginController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RMPluginController.m; sourceTree = "<group>"; };
+		BB82F0CC1913D15F0015AE7A /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
+		BB90CD361A5018BA009881C5 /* libRemoteLib.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libRemoteLib.a; sourceTree = "<group>"; };
+		BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RemoteBundle.xcodeproj; path = RemoteBundle/RemoteBundle.xcodeproj; sourceTree = "<group>"; };
+		BBBD4EFC1A4AE1FE009969E1 /* RemoteCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RemoteCapture.h; sourceTree = "<group>"; };
+		BBBD4EFD1A4AE1FE009969E1 /* RemoteHeaders.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RemoteHeaders.h; sourceTree = "<group>"; };
+		BBBD4EFE1A4AE1FE009969E1 /* RMDeviceController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMDeviceController.h; sourceTree = "<group>"; };
+		BBBD4F001A4AE1FE009969E1 /* RMImageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMImageView.h; sourceTree = "<group>"; };
+		BBBD4F011A4AE1FE009969E1 /* RMImageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RMImageView.m; sourceTree = "<group>"; };
+		BBBD4F021A4AE1FE009969E1 /* RMMacroManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMMacroManager.h; sourceTree = "<group>"; };
+		BBBD4F031A4AE1FE009969E1 /* RMMacroManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RMMacroManager.m; sourceTree = "<group>"; };
+		BBBD4F041A4AE1FE009969E1 /* RMWindowController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMWindowController.h; sourceTree = "<group>"; };
+		BBBD4F051A4AE1FE009969E1 /* RMWindowController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RMWindowController.m; sourceTree = "<group>"; };
+		BBBD4F061A4AE1FE009969E1 /* RMWindowController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = RMWindowController.xib; sourceTree = "<group>"; };
+		BBBD4F531A4AEA35009969E1 /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = usr/lib/libz.dylib; sourceTree = SDKROOT; };
+		BBBD4F561A4AF4FA009969E1 /* iphone.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = iphone.png; sourceTree = "<group>"; };
+		BBBD4F571A4AF4FA009969E1 /* log.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = log.html; sourceTree = "<group>"; };
+		BBBD4F5C1A4AF5B1009969E1 /* patch.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = patch.py; sourceTree = "<group>"; };
+		BBBD4F5E1A4AF5C6009969E1 /* unpatch.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = unpatch.py; sourceTree = "<group>"; };
+		BBF5D8E21912DFCA0037CE2E /* RMPluginController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = RMPluginController.xib; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8D5B49B3048680CD000E48DA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB90CD371A5018BA009881C5 /* libRemoteLib.a in Frameworks */,
+				BBBD4F541A4AEA35009969E1 /* libz.dylib in Frameworks */,
+				DA1B5D020E64686800921439 /* Foundation.framework in Frameworks */,
+				7F2EB89C145057F200E97A87 /* AppKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		089C166AFE841209C02AAC07 /* QuietXcode */ = {
+			isa = PBXGroup;
+			children = (
+				BB82F0CC1913D15F0015AE7A /* README.md */,
+				BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */,
+				7F411B0C15FABAC6002F77B6 /* Classes */,
+				089C167CFE841241C02AAC07 /* Resources */,
+				089C1671FE841209C02AAC07 /* Frameworks and Libraries */,
+				19C28FB8FE9D52D311CA2CBB /* Products */,
+			);
+			name = QuietXcode;
+			sourceTree = "<group>";
+		};
+		089C1671FE841209C02AAC07 /* Frameworks and Libraries */ = {
+			isa = PBXGroup;
+			children = (
+				089C1672FE841209C02AAC07 /* Foundation.framework */,
+				7F2EB899145057EA00E97A87 /* AppKit.framework */,
+				BB90CD361A5018BA009881C5 /* libRemoteLib.a */,
+				BBBD4F531A4AEA35009969E1 /* libz.dylib */,
+			);
+			name = "Frameworks and Libraries";
+			sourceTree = "<group>";
+		};
+		089C167CFE841241C02AAC07 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BBBD4F561A4AF4FA009969E1 /* iphone.png */,
+				BBBD4F571A4AF4FA009969E1 /* log.html */,
+				8D5B49B7048680CD000E48DA /* Info.plist */,
+				BBBD4F5C1A4AF5B1009969E1 /* patch.py */,
+				BBBD4F5E1A4AF5C6009969E1 /* unpatch.py */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		19C28FB8FE9D52D311CA2CBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8D5B49B6048680CD000E48DA /* Remote.xcplugin */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7F411B0C15FABAC6002F77B6 /* Classes */ = {
+			isa = PBXGroup;
+			children = (
+				BB5CF6381912DCC50052E10B /* RMPluginController.h */,
+				BB5CF6391912DCC50052E10B /* RMPluginController.m */,
+				BBF5D8E21912DFCA0037CE2E /* RMPluginController.xib */,
+				BBBD4F041A4AE1FE009969E1 /* RMWindowController.h */,
+				BBBD4F051A4AE1FE009969E1 /* RMWindowController.m */,
+				BBBD4F061A4AE1FE009969E1 /* RMWindowController.xib */,
+				BBBD4F021A4AE1FE009969E1 /* RMMacroManager.h */,
+				BBBD4F031A4AE1FE009969E1 /* RMMacroManager.m */,
+				BBBD4EFE1A4AE1FE009969E1 /* RMDeviceController.h */,
+				BBBD4F001A4AE1FE009969E1 /* RMImageView.h */,
+				BBBD4F011A4AE1FE009969E1 /* RMImageView.m */,
+				BBBD4EFC1A4AE1FE009969E1 /* RemoteCapture.h */,
+				BBBD4EFD1A4AE1FE009969E1 /* RemoteHeaders.h */,
+			);
+			path = Classes;
+			sourceTree = "<group>";
+		};
+		BBBD4EAF1A4AE027009969E1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BBBD4EB31A4AE027009969E1 /* RemoteBundle.loader */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8D5B49AC048680CD000E48DA /* Remote */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DEB913A08733D840010E9CD /* Build configuration list for PBXNativeTarget "Remote" */;
+			buildPhases = (
+				BB90CD341A501101009881C5 /* ShellScript */,
+				8D5B49B1048680CD000E48DA /* Sources */,
+				8D5B49B3048680CD000E48DA /* Frameworks */,
+				BB5251F8160A2EF700276EB3 /* Resources */,
+				BB126F3A192DAF8400416E57 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Remote;
+			productInstallPath = "$(HOME)/Library/Bundles";
+			productName = QuietXcode;
+			productReference = 8D5B49B6048680CD000E48DA /* Remote.xcplugin */;
+			productType = "com.apple.product-type.bundle";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		089C1669FE841209C02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0510;
+			};
+			buildConfigurationList = 1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Remote" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 1;
+			knownRegions = (
+				English,
+				Japanese,
+				French,
+				German,
+				en,
+			);
+			mainGroup = 089C166AFE841209C02AAC07 /* QuietXcode */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = BBBD4EAF1A4AE027009969E1 /* Products */;
+					ProjectRef = BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				8D5B49AC048680CD000E48DA /* Remote */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		BBBD4EB31A4AE027009969E1 /* RemoteBundle.loader */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.cfbundle;
+			path = RemoteBundle.loader;
+			remoteRef = BBBD4EB21A4AE027009969E1 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BB5251F8160A2EF700276EB3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBBD4F5A1A4AF534009969E1 /* RemoteCapture.h in Resources */,
+				BBBD4F5B1A4AF534009969E1 /* RemoteHeaders.h in Resources */,
+				BBBD4F5F1A4AF5C6009969E1 /* unpatch.py in Resources */,
+				BBBD4F581A4AF4FA009969E1 /* iphone.png in Resources */,
+				BBBD4F0B1A4AE1FE009969E1 /* RMWindowController.xib in Resources */,
+				BBBD4F591A4AF4FA009969E1 /* log.html in Resources */,
+				BB82F0CD1913D15F0015AE7A /* README.md in Resources */,
+				BBF5D8E31912DFCA0037CE2E /* RMPluginController.xib in Resources */,
+				BBBD4F5D1A4AF5B1009969E1 /* patch.py in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		BB126F3A192DAF8400416E57 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "rm -rf /var/folders/nh/*/*/com.apple.DeveloperTools/*/Xcode/*/Xcode/SharedPrecompiledHeaders/RemoteBundle-Prefix-*/RemoteBundle-Prefix.pch.pch\ncd RemoteBundle && rm -rf build &&\nxcodebuild -sdk iphonesimulator -config Debug &&\ncp -r build/Debug-iphonesimulator/RemoteBundle.loader \"$INSTALL_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nxcodebuild -sdk iphoneos -config Debug &&\nrm -rf \"$INSTALL_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"/RemoteBundleDevice.loader\ncp -r build/Debug-iphoneos/RemoteBundle.loader \"$INSTALL_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"/RemoteBundleDevice.loader";
+			showEnvVarsInLog = 0;
+		};
+		BB90CD341A501101009881C5 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [[ -d RemoteLib ]]; then\n    cd RemoteLib\n    xcodebuild\nfi";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8D5B49B1048680CD000E48DA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBBD4F081A4AE1FE009969E1 /* RMImageView.m in Sources */,
+				BBBD4F0A1A4AE1FE009969E1 /* RMWindowController.m in Sources */,
+				BB5CF63A1912DCC50052E10B /* RMPluginController.m in Sources */,
+				BBBD4F091A4AE1FE009969E1 /* RMMacroManager.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1DEB913B08733D840010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_IDENTITY = "";
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEPLOYMENT_LOCATION = YES;
+				DEPLOYMENT_POSTPROCESSING = YES;
+				DSTROOT = "$(HOME)";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_GC = unsupported;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = "/Library/Application Support/Developer/Shared/Xcode/Plug-ins";
+				LD_RUNPATH_SEARCH_PATHS = /Developer;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
+				PRODUCT_NAME = Remote;
+				STRIP_INSTALLED_PRODUCT = NO;
+				WRAPPER_EXTENSION = xcplugin;
+			};
+			name = Debug;
+		};
+		1DEB913F08733D840010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 3.5;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = DEBUG;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_PREPROCESSOR_DEFINITIONS = "";
+				INSTALL_PATH = "$(HOME)/Library/Application Support/Developer/Shared/Xcode/Plug-ins";
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB913A08733D840010E9CD /* Build configuration list for PBXNativeTarget "Remote" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB913B08733D840010E9CD /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Remote" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB913F08733D840010E9CD /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 089C1669FE841209C02AAC07 /* Project object */;
+}
