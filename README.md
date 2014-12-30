@@ -35,15 +35,15 @@ of simular pixel values.
 
 ### Macro entries logged/replayed:
 
-- Hardware <hw.machine> - device type from sysctlbyname()
+- Hardware &lt;hw.machine> - device type from sysctlbyname()
 
-- Device <screen width> <screen height> <snapshot scale> <device scale>
+- Device &lt;screen width> &lt;screen height> &lt;snapshot scale> &lt;device scale>
 
-- Begin <wait time> <x> <y> [<x2> <y2>] - touch(s) start
+- Begin &lt;wait time> &lt;x> &lt;y> [&lt;x2> &lt;y2>] - touch(s) start
 
-- Moved/Ended <ditto> touches moved/ended - two touches maximum
+- Moved/Ended &lt;ditto> touches moved/ended - two touches maximum
 
-- Expect timeout:<seconds> tolerance:<bytes different>.. <snapshot>
+- Expect timeout:&lt;seconds> tolerance:&lt;bytes different>.. &lt;snapshot>
 
 ### Implementation Classes
 
