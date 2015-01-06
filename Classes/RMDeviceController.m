@@ -20,17 +20,6 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
 // run length encoding used to only transmit differrences between frames
 - (void)recover:(const void *)tmp against:(RemoteCapture *)prevbuff {
 
-    if ( time(NULL) > 1427623256L ) {
-        static int advised;
-        if ( !advised++ )
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [[NSAlert alertWithMessageText:@"Replay Plugin:"
-                                 defaultButton:@"OK" alternateButton:nil otherButton:nil
-                     informativeTextWithFormat:@"RemoteLib expired, please download a new copy from github."] runModal];
-            });
-        return;
-    }
-
     register unsigned expectedDiff = 0, check = 0, *data = (unsigned *)tmp;
     for ( register unsigned
          *curr = self->buffer,
@@ -39,13 +28,12 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
 
         unsigned diff = *data++;
         unsigned count = diff & 0xff;
-        //        printf( "%08x\n", diff );
+
         diff &= 0xffffff00;
         check += *curr++ = (*prev++ + diff + expectedDiff) | 0x000000ff;
         if ( count ) {
             if ( count == 0xff )
                 count = *data++;
-            //            printf( "   %d\n", count );
             for ( unsigned i=0 ; i<count && curr < self->buffend ; i++ )
                 check += *curr++ = (*prev++ + diff + expectedDiff) | 0x000000ff;
         }
@@ -88,30 +76,30 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
     [(NSObject *)owner performSelectorOnMainThread:@selector(logSet:) withObject:deviceString waitUntilDone:NO];
 
     // loop through frames
-    struct _rmframe nextFrame;
-    while ( fread(&nextFrame, 1, sizeof nextFrame, renderStream) == sizeof nextFrame ) {
+    struct _rmframe newFrame;
+    while ( fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame ) {
 
         // event from device
-        if ( nextFrame.length < 0 ) {
-            int touchCount = -nextFrame.length;
+        if ( newFrame.length < 0 ) {
+            int touchCount = -newFrame.length;
 
             struct _rmevent event;
 
-            BOOL isMutipleStart = nextFrame.phase == RMTouchBegan && touchCount > 1;
-            event.phase = isMutipleStart ? RMTouchBeganDouble : nextFrame.phase;
+            BOOL isMutipleStart = newFrame.phase == RMTouchBegan && touchCount > 1;
+            event.phase = isMutipleStart ? RMTouchBeganDouble : newFrame.phase;
 
-            NSMutableString *arg = [self startEvent:nextFrame.phase];
+            NSMutableString *arg = [self startEvent:newFrame.phase];
 
             do {
-                int touchno = nextFrame.length + touchCount;
+                int touchno = newFrame.length + touchCount;
                 if ( touchno < RPMAX_TOUCHES ) {
-                    event.touches[touchno].x = nextFrame.x;
-                    event.touches[touchno].y = nextFrame.y;
+                    event.touches[touchno].x = newFrame.x;
+                    event.touches[touchno].y = newFrame.y;
                 }
-                [arg appendFormat:@" %.1f %.1f", nextFrame.x, nextFrame.y];
+                [arg appendFormat:@" %.1f %.1f", newFrame.x, newFrame.y];
             }
-            while ( nextFrame.length != -1 &&
-                   fread(&nextFrame, 1, sizeof nextFrame, renderStream) == sizeof nextFrame );
+            while ( newFrame.length != -1 &&
+                   fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame );
 
             [owner.imageView event:&event];
 
@@ -121,22 +109,24 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
         }
 
         // resize display window/NSImageView
-        if ( !buffers || nextFrame.width != frame.width || nextFrame.height != frame.height ) {
-            [owner resize:NSMakeSize(nextFrame.width, nextFrame.height)];
+        NSSize  newSize = NSMakeSize(newFrame.width, newFrame.height);
+        if ( !buffers || newFrame.imageScale != frame.imageScale ||
+                newSize.width != frame.width || newSize.height != frame.height ) {
+            [owner resize:newSize];
 
             NSString *deviceString = [NSString stringWithFormat:@"Device %g %g %g %g",
-                                      nextFrame.width, nextFrame.height, nextFrame.imageScale, device.scale];
+                                      newFrame.width, newFrame.height, newFrame.imageScale, device.scale];
             [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
                                                 withObject:deviceString waitUntilDone:NO];
 
             // buffer current a previous frame to only render differences
             buffers = nil;
-            buffers = @[[[RemoteCapture alloc] initFrame:&nextFrame],
-                        [[RemoteCapture alloc] initFrame:&nextFrame]];
+            buffers = @[[[RemoteCapture alloc] initFrame:&newFrame],
+                        [[RemoteCapture alloc] initFrame:&newFrame]];
             frameno = 0;
         }
 
-        frame = nextFrame;
+        frame = newFrame;
 
         //NSLog( @"Incoming bytes from client: %u", frame.length );
         void *tmp = malloc(frame.length);
@@ -154,7 +144,7 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
 
         // update image in display window
         CGImageRef img = [currentBuffer cgImage];
-        NSImage *image = [[NSImage alloc] initWithCGImage:img size:NSMakeSize(frame.width, frame.height)];
+        NSImage *image = [[NSImage alloc] initWithCGImage:img size:newSize];
         CGImageRelease(img);
         [owner.imageView performSelectorOnMainThread:@selector(setImage:) withObject:image waitUntilDone:NO];
     }
