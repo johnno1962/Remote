@@ -73,14 +73,9 @@ respond to events. To preserve network bandwidth to the device animations are no
 
 ### Not quite MTI License
 
-I'd love to give this software away completely with an MIT license but these plugins all take time
-to develop so the license terms are: it's free for use for iOS development by individuals
-and oganisations but if you want to redistribute this software or software based in large part
-on it please get in touch for a redistribution license!
-
 Copyright (C) 2014 John Holdsworth
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use the software for iOS development but it can only be redistributed in source form without charge charge through github subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use the software for iOS development but it can only be redistributed in source form without charge through github subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
