@@ -71,20 +71,17 @@ UIAlertView prompts are also not captured as they seem to render outside the win
 hierarchy. Finally, UIDatePickers are not rendered correctly at all although they will 
 respond to events. To preserve network bandwidth to the device animations are not played.
 
-### Temporary License
+### Not quite MTI License
 
-Depending on interest this project may morph into a product so, for now,
-the  Plugin is "licensed for download any use during iPhone development 
-until the end of March 2015" and may not be redistributed other than 
-through github. I've made the source available for as much of the code 
-as possible should you want to change the interface but held back one 
-source file as a precompiled library. Please file any bug reports or
-fixes using github issues and pull requests if you encounter any problems.
+I'd love to give this software away completely with an MIT license but it all takes time to develop so
+as far as I'm concerned the license terms are: it's free for use for iOS development by individuals
+and oganisations but if you want to redistribute this software or software based on it for payment
+please get in touch for a redistribution license!
 
-### As ever:
+Copyright (C) 2014 John Holdsworth
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT 
-LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use the software for iOS development but it can only be redistributed in source form without charge charge through github subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
