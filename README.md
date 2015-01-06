@@ -71,11 +71,11 @@ UIAlertView prompts are also not captured as they seem to render outside the win
 hierarchy. Finally, UIDatePickers are not rendered correctly at all although they will 
 respond to events. To preserve network bandwidth to the device animations are not played.
 
-### Not quite MTI License
+### Not quite an MIT License
 
 Copyright (C) 2014 John Holdsworth
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use the software for iOS development but it can only be redistributed in source form without charge through github subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use the software for iOS development but it can only be redistributed in source form without charge through github and subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
