@@ -16,7 +16,7 @@
 #define REMOTE_PORT INJECTION_PORT+2
 #define REMOTE_MINDIFF (3*sizeof(unsigned))
 
-#if DEBUG
+#ifdef DEBUG
 #define RPLog NSLog
 #else
 #define RPLog while(0) NSLog
@@ -230,7 +230,7 @@ static NSArray *screens;
 
 #ifdef REMOTEPLUGIN_SERVERIP
 + (void)load {
-    [self performSelectorInBackground:@selector(startCapture:) withObject:REMOTEPLUGIN_SERVERIP];
+    [self performSelectorInBackground:@selector(startCapture:) withObject:@REMOTEPLUGIN_SERVERIP];
 }
 #endif
 

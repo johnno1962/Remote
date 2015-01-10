@@ -112,14 +112,17 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
         NSSize  newSize = NSMakeSize(newFrame.width, newFrame.height);
         if ( !buffers || newFrame.imageScale != frame.imageScale ||
                 newSize.width != frame.width || newSize.height != frame.height ) {
-            [owner resize:newSize];
+
+            dispatch_sync(dispatch_get_main_queue(), ^{
+                [owner resize:newSize];
+            });
 
             NSString *deviceString = [NSString stringWithFormat:@"Device %g %g %g %g",
                                       newFrame.width, newFrame.height, newFrame.imageScale, device.scale];
             [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
                                                 withObject:deviceString waitUntilDone:NO];
 
-            // buffer current a previous frame to only render differences
+            // buffer current and previous frame to only render differences
             buffers = nil;
             buffers = @[[[RemoteCapture alloc] initFrame:&newFrame],
                         [[RemoteCapture alloc] initFrame:&newFrame]];

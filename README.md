@@ -63,6 +63,8 @@ Internal (connected by protocol RMDeviceDelegate):
 
 - RemoteCapture.h - #imported into application's main.m to connect to Xcode
 
+RemoteCapture.h requires a patched main.m to be compiled using ARC.
+
 ### Limitations
 
 Remote uses [UIWindow.layer renderInContext:] so most activity on the device is 
@@ -70,6 +72,10 @@ captured including the keyboard but excepting video replay and openGL layers.
 UIAlertView prompts are also not captured as they seem to render outside the window
 hierarchy. Finally, UIDatePickers are not rendered correctly at all although they will 
 respond to events. To preserve network bandwidth to the device animations are not played.
+
+Please note: for some reason it takes about a minute before Xcode will accept remote
+connections on it's server socket (firewall complications?). After restarting Xcode
+you may need to wait a while before being able to use the Remote plugin from a device.
 
 ### Not quite an MIT License
 

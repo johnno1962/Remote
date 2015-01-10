@@ -34,7 +34,7 @@ for main in text.split("\n"):
 // Remote Plugin patch start //
 
 #ifdef DEBUG
-#define REMOTEPLUGIN_SERVERIP @"%s" // %s
+#define REMOTEPLUGIN_SERVERIP "%s" // %s
 #include "%s/RemoteCapture.h"
 #endif
 
