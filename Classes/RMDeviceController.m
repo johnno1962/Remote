@@ -109,12 +109,11 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
         }
 
         // resize display window/NSImageView
-        NSSize  newSize = NSMakeSize(newFrame.width, newFrame.height);
         if ( !buffers || newFrame.imageScale != frame.imageScale ||
-                newSize.width != frame.width || newSize.height != frame.height ) {
+                newFrame.width != frame.width || newFrame.height != frame.height ) {
 
             dispatch_sync(dispatch_get_main_queue(), ^{
-                [owner resize:newSize];
+                [owner resize:NSMakeSize(newFrame.width, newFrame.height)];
             });
 
             NSString *deviceString = [NSString stringWithFormat:@"Device %g %g %g %g",
@@ -144,11 +143,7 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
         free(tmp);
 
         currentBuffer = buffer;
-
-        CGImageRef img = [currentBuffer cgImage];
-        NSImage *image = [[NSImage alloc] initWithCGImage:img size:newSize];
-        CGImageRelease(img);
-        [(NSObject *)owner performSelectorOnMainThread:@selector(updateImage:) withObject:image waitUntilDone:NO];
+        [owner updateImage:[currentBuffer cgImage]];
     }
 
 close:

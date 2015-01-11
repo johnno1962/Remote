@@ -153,9 +153,15 @@ static int serverSocket;
     return imageView;
 }
 
-- (void)updateImage:(NSImage *)image {
-    imageView.image = image;
+- (void)updateImage:(CGImageRef)img {
+    struct _rmframe *framep = &self.device->frame;
+    NSSize size = {framep->width*framep->imageScale, framep->height*framep->imageScale};
+    NSImage *image = [[NSImage alloc] initWithCGImage:img size:size];
+    [imageView performSelectorOnMainThread:@selector(setImage:) withObject:image waitUntilDone:NO];
+    if ( framep->imageScale != 1. )
+        image = [[NSImage alloc] initWithCGImage:img size:NSMakeSize(framep->width,framep->height)];
     [manager recordImage:image];
+    CGImageRelease(img);
 }
 
 - (void)setDevice:(RMDeviceController *)device {
