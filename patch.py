@@ -12,9 +12,8 @@ sys.argv.pop(0)
 resources = sys.argv.pop(0)
 workspace = sys.argv.pop(0)
 
-ipaddr0 = sys.argv.pop(0)
-if re.match( r"127.", ipaddr0 ):
-    ipaddr0 = sys.argv.pop(0)
+while re.match( r"(127|169|172)\.", sys.argv[0] ):
+    sys.argv.pop(0)
 
 ipaddrs = sys.argv
 
@@ -34,12 +33,12 @@ for main in text.split("\n"):
 // Remote Plugin patch start //
 
 #ifdef DEBUG
-#define REMOTEPLUGIN_SERVERIP "%s" // %s
+#define REMOTEPLUGIN_SERVERIPS "%s"
 #include "%s/RemoteCapture.h"
 #endif
 
 // Remote Plugin patch end //
-''' % (ipaddr0, " ".join(ipaddrs), resources), source, 1, re.DOTALL)
+''' % (" ".join(ipaddrs), resources), source, 1, re.DOTALL)
     f = open(main, "w")
     f.write(source)
     commands.getstatusoutput("open '"+main+"'")

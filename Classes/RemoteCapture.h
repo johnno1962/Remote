@@ -228,21 +228,25 @@ static int connectionSocket;
 static Class UIWindowLayer;
 static NSArray *screens;
 
-#ifdef REMOTEPLUGIN_SERVERIP
+#ifdef REMOTEPLUGIN_SERVERIPS
 + (void)load {
-    [self performSelectorInBackground:@selector(startCapture:) withObject:@REMOTEPLUGIN_SERVERIP];
+    [self performSelectorInBackground:@selector(startCapture:) withObject:@REMOTEPLUGIN_SERVERIPS];
 }
 #endif
 
-+ (void)startCapture:(NSString *)addr {
++ (void)startCapture:(NSString *)addrs {
 #if TARGET_IPHONE_SIMULATOR
-    addr = @"127.0.0.1";
+    addrs = @"127.0.0.1";
 #endif
     UIWindowLayer = objc_getClass("UIWindowLayer");
-    if ( !(connectionSocket = [self connectTo:[addr UTF8String]]) )
-        return;
+    for ( NSString *addr in [addrs componentsSeparatedByString:@" "] )
+        if ( (connectionSocket = [self connectTo:[addr UTF8String]]) )
+            break;
 
-    NSLog( @"RemoteCapture: Connected." );
+    if ( !connectionSocket )
+        return;
+    else
+        NSLog( @"RemoteCapture: Connected." );
 
     while ( !(screens = [UIScreen screens]).count )
         [NSThread sleepForTimeInterval:.5];
