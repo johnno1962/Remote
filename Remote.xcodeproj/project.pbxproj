@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		7F2EB89C145057F200E97A87 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F2EB899145057EA00E97A87 /* AppKit.framework */; };
 		BB5CF63A1912DCC50052E10B /* RMPluginController.m in Sources */ = {isa = PBXBuildFile; fileRef = BB5CF6391912DCC50052E10B /* RMPluginController.m */; };
+		BB61FC2A1A629AC300833642 /* QTKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB61FC291A629AC300833642 /* QTKit.framework */; };
 		BB82F0CD1913D15F0015AE7A /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = BB82F0CC1913D15F0015AE7A /* README.md */; };
 		BBBD4F081A4AE1FE009969E1 /* RMImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = BBBD4F011A4AE1FE009969E1 /* RMImageView.m */; };
 		BBBD4F091A4AE1FE009969E1 /* RMMacroManager.m in Sources */ = {isa = PBXBuildFile; fileRef = BBBD4F031A4AE1FE009969E1 /* RMMacroManager.m */; };
@@ -43,6 +44,7 @@
 		8D5B49B7048680CD000E48DA /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB5CF6381912DCC50052E10B /* RMPluginController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMPluginController.h; sourceTree = "<group>"; };
 		BB5CF6391912DCC50052E10B /* RMPluginController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RMPluginController.m; sourceTree = "<group>"; };
+		BB61FC291A629AC300833642 /* QTKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QTKit.framework; path = System/Library/Frameworks/QTKit.framework; sourceTree = SDKROOT; };
 		BB82F0CC1913D15F0015AE7A /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RemoteBundle.xcodeproj; path = RemoteBundle/RemoteBundle.xcodeproj; sourceTree = "<group>"; };
 		BBBD4EFC1A4AE1FE009969E1 /* RemoteCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RemoteCapture.h; sourceTree = "<group>"; };
@@ -69,9 +71,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BBBD4F541A4AEA35009969E1 /* libz.dylib in Frameworks */,
 				DA1B5D020E64686800921439 /* Foundation.framework in Frameworks */,
 				7F2EB89C145057F200E97A87 /* AppKit.framework in Frameworks */,
+				BB61FC2A1A629AC300833642 /* QTKit.framework in Frameworks */,
+				BBBD4F541A4AEA35009969E1 /* libz.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -81,6 +84,7 @@
 		089C166AFE841209C02AAC07 /* QuietXcode */ = {
 			isa = PBXGroup;
 			children = (
+				BB61FC291A629AC300833642 /* QTKit.framework */,
 				BB82F0CC1913D15F0015AE7A /* README.md */,
 				BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */,
 				7F411B0C15FABAC6002F77B6 /* Classes */,

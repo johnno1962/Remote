@@ -153,6 +153,13 @@ static int serverSocket;
     return imageView;
 }
 
+- (void)updateImage:(CGImageRef)img size:(NSSize)size {
+    NSImage *image = [[NSImage alloc] initWithCGImage:img size:size];
+    [self.imageView performSelectorOnMainThread:@selector(setImage:) withObject:image waitUntilDone:NO];
+    [manager updateImage:image];
+    CGImageRelease(img);
+}
+
 - (void)setDevice:(RMDeviceController *)device {
     if ( !(_device = device) ) {
         NSString *pngPath = [[NSBundle bundleForClass:[self class]] pathForResource:@"iphone" ofType:@"png"];

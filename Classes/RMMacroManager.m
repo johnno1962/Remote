@@ -9,6 +9,8 @@
 #import "RMMacroManager.h"
 #import <WebKit/WebKit.h>
 
+#import <QTKit/QTKit.h>
+
 #import "RMWindowController.h"
 
 @implementation RMMacroManager {
@@ -20,6 +22,11 @@
 
     IBOutlet NSWindow *snapshotWindow;
     IBOutlet __weak NSImageView *snapshot;
+
+    NSTimeInterval lastImageTime;
+    NSImage *lastImage;
+    QTMovie *movie;
+    BOOL paused;
 }
 
 - (void)awakeFromNib {
@@ -94,8 +101,8 @@
 }
 
 - (IBAction)loader:(NSPopUpButton *)sender {
-    NSString *title = [sender selectedItem].title;
-    if ( [title isEqualToString:@"Import Macro..."] ) {
+    NSString *name = [sender selectedItem].title;
+    if ( [name isEqualToString:@"Import Macro..."] ) {
         NSOpenPanel* opener = [NSOpenPanel openPanel];
         [opener setTitle:@"Load Macro Definition..."];
         if ( [opener runModal] != NSOKButton )
@@ -103,7 +110,7 @@
         [owner logSet:[NSString stringWithContentsOfURL:opener.URL encoding:NSUTF8StringEncoding error:NULL]];
         macroName.stringValue = [[opener.URL.path lastPathComponent] stringByDeletingPathExtension];
     }
-    else if ( [title isEqualToString:@"Export Macro..."] ) {
+    else if ( [name isEqualToString:@"Export Macro..."] ) {
         NSSavePanel *saver = [NSSavePanel savePanel];
         [saver setTitle:@"Save Macro Definition"];
         [saver setExtensionHidden:NO];
@@ -116,8 +123,8 @@
             [owner logAdd:@"Macro exported."];
     }
     else {
-        [owner logSet:[NSString stringWithContentsOfFile:[self macroPath:title] encoding:NSUTF8StringEncoding error:NULL]];
-        macroName.stringValue = title;
+        [owner logSet:[NSString stringWithContentsOfFile:[self macroPath:name] encoding:NSUTF8StringEncoding error:NULL]];
+        macroName.stringValue = name;
     }
 }
 
@@ -129,7 +136,7 @@
         if ( ![[self macroContents] writeToFile:[self macroPath:name] atomically:NO encoding:NSUTF8StringEncoding error:NULL] )
             [[owner class] error:@"Error saving macro"];
         else
-            [owner logAdd:@"Macro saved."];
+            [owner logAdd:[NSString stringWithFormat:@"Macro saved under name %@.", name]];
         [self updateLoaderItems];
     }
 }
@@ -181,6 +188,51 @@
 - (IBAction)clear:sender {
     [owner logSet:@""];
     [owner reset];
+}
+
+static NSString *movieTmp = @"/tmp/remote.m4v";
+
+- (IBAction)record:sender {
+    movie = [[QTMovie alloc] initToWritableFile:movieTmp error:NULL];
+    lastImageTime = [NSDate timeIntervalSinceReferenceDate];
+}
+
+- (IBAction)pause:sender {
+    paused = !paused;
+}
+
+- (IBAction)stop:sender {
+    [self updateImage:nil];
+    [movie updateMovieFile];
+    movie = nil;
+    NSSavePanel *saver = [NSSavePanel savePanel];
+    [saver setTitle:@"Save Recorded Movie"];
+    [saver setExtensionHidden:NO];
+    [saver setNameFieldStringValue:@"remote.m4v"];
+    if ( [saver runModal] != NSOKButton )
+        return;
+    NSFileManager *fm = [NSFileManager defaultManager];
+    [fm removeItemAtPath:saver.URL.path error:NULL];
+    [fm moveItemAtPath:movieTmp toPath:saver.URL.path error:NULL];
+    [[NSWorkspace sharedWorkspace] openURL:saver.URL];
+}
+
+- (void)updateImage:(NSImage *)image {
+    if ( paused )
+        return;
+
+    NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
+    if ( lastImage ) {
+        long timeScale      = 600;
+        long long timeValue = (now-lastImageTime)*timeScale;
+
+        [movie addImage:lastImage forDuration:QTMakeTime(timeValue, timeScale)
+         withAttributes:@{QTAddImageCodecType: @"mp4v",
+                          QTAddImageCodecQuality: [NSNumber numberWithLong:codecHighQuality]}];
+    }
+
+    lastImageTime = now;
+    lastImage = image;
 }
 
 @end

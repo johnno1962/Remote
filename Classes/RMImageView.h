@@ -10,6 +10,6 @@
 
 @interface RMImageView : NSImageView
 
-- (void)event:(const struct _rmevent *)newEvent;
+- (void)drawEvent:(const struct _rmevent *)newEvent;
 
 @end

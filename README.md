@@ -4,8 +4,9 @@
 from a window on your Mac during development. Originally created to avoid
 having to pick  up a device during testing you can record "macros" 
 of device touches and replay them. It will also compare the resulting screen
-output against a snapshot for end-to-end testing. The Macro window is an 
-editable WebView that can be modified at will.
+output against a snapshot for end-to-end testing. The Macro log is an 
+editable WebView that can be modified at will. Finally, you can now
+record all display output into a quicktime movie.
 
 ![Icon](http://injectionforxcode.johnholdsworth.com/remote.png)
 
@@ -31,7 +32,7 @@ matches the snapshot within the specified tolerance or it will timeout
 asking if you would like to update the snapshot or the tolerance used 
 (remember to save the updated macro.) The units of tolerance are the 
 number of bytes the screen image differs after the run length encoding
-of simular pixel values. 
+of simular pixel values.
 
 ### Macro entries logged/replayed:
 
