@@ -205,8 +205,8 @@ static CGFloat windowTitleHeight = 22.;
     static NSRegularExpression *parser;
     if ( !parser )
         parser = [NSRegularExpression regularExpressionWithPattern:@"<div id=\"([^\"]+)\"[^>]*>\\s*("
-                  "(Began|Moved|Ended) ([\\d+.]+) ([\\d+.]+) ([\\d+.]+)( ([\\d+.]+) ([\\d+.]+))?|"
-                  "Expect timeout:([\\d+.]+) tolerance:(\\d+).+?"
+                  "(Began|Moved|Ended) ([\\d.]+) ([\\d.]+) ([\\d.]+)( ([\\d.]+) ([\\d.]+))?|"
+                  "Expect timeout:([\\d.]+) tolerance:(\\d+).+?"
                   "<span style=\"display:none\">([^<]+)</span>|"
                   "Device (\\d+) (\\d+) (\\d+) (\\d+))" options:0 error:NULL];
 
@@ -246,6 +246,18 @@ static CGFloat windowTitleHeight = 22.;
               [NSThread sleepForTimeInterval:sleep];
               wait -= sleep;
           }
+
+          if ( cancel )
+              dispatch_sync(dispatch_get_main_queue(), ^{
+                  switch ( [[NSAlert alertWithMessageText:@"Replay Cancelled:" defaultButton:@"Cancel Replay"
+                                          alternateButton:@"Cancel Wait Only" otherButton:nil
+                                informativeTextWithFormat:@"Replay cancelled, do you wish to continue?"] runModal] ) {
+
+                      case NSAlertAlternateReturn:
+                          cancel = FALSE;
+                          break;
+                  }
+              });
 
           event.touches[0].x = [result groupAtIndex:5 inString:html].floatValue;
           event.touches[0].y = [result groupAtIndex:6 inString:html].floatValue;

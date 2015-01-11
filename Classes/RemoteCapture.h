@@ -17,9 +17,9 @@
 #define REMOTE_MINDIFF (3*sizeof(unsigned))
 
 #ifdef DEBUG
-#define RPLog NSLog
+#define RMLog NSLog
 #else
-#define RPLog while(0) NSLog
+#define RMLog while(0) NSLog
 #endif
 
 typedef NS_ENUM(int, RMTouchPhase) {
@@ -32,12 +32,12 @@ typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchUseScale,
 };
 
-#define RPMAX_TOUCHES 2
+#define RMMAX_TOUCHES 2
 
 struct _rmevent {
     RMTouchPhase phase;
     union {
-        struct { float x, y; } touches[RPMAX_TOUCHES];
+        struct { float x, y; } touches[RMMAX_TOUCHES];
     };
 };
 
@@ -96,27 +96,27 @@ static NSSet *currentTouches;
 }
 
 - (UITouch *)_firstTouchForView:(UIView *)view {
-    RPLog( @"_firstTouchForView: %@", view );
+    RMLog( @"_firstTouchForView: %@", view );
     return currentTouch;
 }
 
 - (NSSet *)touchesForView:(UIView *)view {
-    RPLog( @"touchesForWindow:%@", view );
+    RMLog( @"touchesForWindow:%@", view );
     return currentTouches;
 }
 
 - (NSSet *)touchesForWindow:(UIWindow *)window {
-    RPLog( @"touchesForWindow:%@", window );
+    RMLog( @"touchesForWindow:%@", window );
     return currentTouches;
 }
 
 - (NSSet *)touchesForGestureRecognizer:(UIGestureRecognizer *)rec {
-    RPLog( @"touchesForGestureRecognizer:%@", rec );
+    RMLog( @"touchesForGestureRecognizer:%@", rec );
     return currentTouches;
 }
 
 - (void)_removeTouch:(UITouch *)touch fromGestureRecognizer:(UIGestureRecognizer *)rec {
-    RPLog( @"_removeTouch:%@ fromGestureRecognizer:%@", touch, rec );
+    RMLog( @"_removeTouch:%@ fromGestureRecognizer:%@", touch, rec );
 }
 
 - (NSSet *)allTouches {
@@ -124,7 +124,7 @@ static NSSet *currentTouches;
 }
 
 - (void)_addWindowAwaitingLatentSystemGestureNotification:(id)a0 deliveredToEventWindow:(id)a1 {
-    RPLog( @"_addWindowAwaitingLatentSystemGestureNotification:%@ deliveredToEventWindow:%@", a0, a1 );
+    RMLog( @"_addWindowAwaitingLatentSystemGestureNotification:%@ deliveredToEventWindow:%@", a0, a1 );
 }
 
 @end
@@ -330,7 +330,7 @@ static int skipEcho, pending;
         [[window layer] renderInContext:buffer->cg];
 #endif
         if( benchmark )
-            RPLog( @"%@ %f", NSStringFromCGRect(window.bounds),
+            RMLog( @"%@ %f", NSStringFromCGRect(window.bounds),
                   [NSDate timeIntervalSinceReferenceDate]-start );
     }
 
@@ -342,7 +342,7 @@ static int skipEcho, pending;
     frame.length = (unsigned)[out length];
 
     if ( benchmark )
-        RPLog( @"== %f", [NSDate timeIntervalSinceReferenceDate]-start );
+        RMLog( @"== %f", [NSDate timeIntervalSinceReferenceDate]-start );
 
     if ( !writeQueue )
         writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
@@ -352,7 +352,7 @@ static int skipEcho, pending;
             if ( write(connectionSocket, &frame, sizeof frame) != sizeof frame )
                 NSLog( @"RemoteCapture: Could not write bounds" );
             else if ( write(connectionSocket, [out bytes], frame.length) != frame.length )
-                NSLog( @"RemoteCapture: Could not write tmp" );
+                NSLog( @"RemoteCapture: Could not write out" );
         });
 }
 
@@ -362,7 +362,7 @@ static int skipEcho, pending;
     struct _rmevent rpevent;
     while ( fread(&rpevent, 1, sizeof rpevent, eventStream) == sizeof rpevent ) {
 
-        RPLog( @"Event Arrives: %f %f %d", rpevent.touches[0].x, rpevent.touches[0].y, rpevent.phase );
+        RMLog( @"Remote Event: %f %f %d", rpevent.touches[0].x, rpevent.touches[0].y, rpevent.phase );
         dispatch_sync(dispatch_get_main_queue(), ^{
             CGPoint location = {rpevent.touches[0].x, rpevent.touches[0].y},
                 location2 = {rpevent.touches[1].x, rpevent.touches[1].y};
@@ -383,7 +383,7 @@ static int skipEcho, pending;
                             currentTarget = found;
                     }
 
-                    RPLog( @"Double Target selected: %@", currentTarget );
+                    RMLog( @"Double Target selected: %@", currentTarget );
 
                     currentTouch2 = [[UITouch alloc] init];
 
@@ -406,7 +406,7 @@ static int skipEcho, pending;
                             currentTarget = found;
                     }
 
-                    RPLog( @"Target selected: %@", currentTarget );
+                    RMLog( @"Target selected: %@", currentTarget );
                     if ( [currentTarget respondsToSelector:@selector(setAutocorrectionType:)] ) {
                         UITextField *textField = (UITextField *)currentTarget;
                         saveAuto = textField.autocorrectionType;
@@ -520,10 +520,11 @@ static int skipEcho, pending;
 - (void)in_sendEvent:(UIEvent *)event {
     [self in_sendEvent:event];
     NSSet *touches = event.allTouches;
-
-    RPLog( @"%@", event );
+#if 0
+    RMLog( @"%@", event );
     for ( UITouch *t in touches )
-        RPLog( @"Gestures: %@", t.gestureRecognizers );
+        RMLog( @"Gestures: %@", t.gestureRecognizers );
+#endif
 
     struct _rmframe header;
     header.length = (int)-touches.count;

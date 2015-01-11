@@ -92,7 +92,7 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
 
             do {
                 int touchno = newFrame.length + touchCount;
-                if ( touchno < RPMAX_TOUCHES ) {
+                if ( touchno < RMMAX_TOUCHES ) {
                     event.touches[touchno].x = newFrame.x;
                     event.touches[touchno].y = newFrame.y;
                 }
@@ -230,7 +230,7 @@ close:
 - (void)writeEvent:(const struct _rmevent *)event {
     [owner.imageView event:event];
     if ( event && write( clientSocket, event, sizeof *event ) != sizeof *event )
-        NSLog( @"Replay: event write error" );
+        NSLog( @"Remote: event write error" );
 }
 
 - (NSMutableString *)startEvent:(RMTouchPhase)phase {
