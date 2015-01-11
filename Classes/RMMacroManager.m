@@ -8,7 +8,6 @@
 
 #import "RMMacroManager.h"
 #import <WebKit/WebKit.h>
-
 #import <QTKit/QTKit.h>
 
 #import "RMWindowController.h"
@@ -23,10 +22,10 @@
     IBOutlet NSWindow *snapshotWindow;
     IBOutlet __weak NSImageView *snapshot;
 
+    IBOutlet __weak NSButton *bRecord, *bPause, *bStop;
     NSTimeInterval lastImageTime;
     NSImage *lastImage;
     QTMovie *movie;
-    BOOL paused;
 }
 
 - (void)awakeFromNib {
@@ -195,35 +194,44 @@ static NSString *movieTmp = @"/tmp/remote.m4v";
 - (IBAction)record:sender {
     movie = [[QTMovie alloc] initToWritableFile:movieTmp error:NULL];
     lastImageTime = [NSDate timeIntervalSinceReferenceDate];
+    bRecord.enabled = FALSE;
+    bStop.enabled = TRUE;
 }
 
 - (IBAction)pause:sender {
-    paused = !paused;
+    if ( bPause.state )
+        [self recordImage:nil];
+    else
+        lastImageTime = [NSDate timeIntervalSinceReferenceDate];
 }
 
 - (IBAction)stop:sender {
-    [self updateImage:nil];
+    bRecord.enabled = TRUE;
+    bStop.enabled = FALSE;
+    [self recordImage:nil];
     [movie updateMovieFile];
     movie = nil;
+
     NSSavePanel *saver = [NSSavePanel savePanel];
     [saver setTitle:@"Save Recorded Movie"];
     [saver setExtensionHidden:NO];
     [saver setNameFieldStringValue:@"remote.m4v"];
     if ( [saver runModal] != NSOKButton )
         return;
+
+    NSError *err = nil;
     NSFileManager *fm = [NSFileManager defaultManager];
-    [fm removeItemAtPath:saver.URL.path error:NULL];
-    [fm moveItemAtPath:movieTmp toPath:saver.URL.path error:NULL];
-    [[NSWorkspace sharedWorkspace] openURL:saver.URL];
+    [fm removeItemAtPath:saver.URL.path error:&err];
+    if ( [fm moveItemAtPath:movieTmp toPath:saver.URL.path error:&err] )
+        [[NSWorkspace sharedWorkspace] openURL:saver.URL];
+    else
+        [[owner class] error:@"Unable to save movie: %@", err];
 }
 
-- (void)updateImage:(NSImage *)image {
-    if ( paused )
-        return;
-
+- (void)recordImage:(NSImage *)image {
     NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
-    if ( lastImage ) {
-        long timeScale      = 600;
+    if ( lastImage && movie && (!bPause.state || !image) ) {
+        long timeScale = 600;
         long long timeValue = (now-lastImageTime)*timeScale;
 
         [movie addImage:lastImage forDuration:QTMakeTime(timeValue, timeScale)
@@ -232,7 +240,8 @@ static NSString *movieTmp = @"/tmp/remote.m4v";
     }
 
     lastImageTime = now;
-    lastImage = image;
+    if ( image )
+        lastImage = image;
 }
 
 @end

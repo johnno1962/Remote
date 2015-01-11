@@ -6,9 +6,9 @@ having to pick  up a device during testing you can record "macros"
 of device touches and replay them. It will also compare the resulting screen
 output against a snapshot for end-to-end testing. The Macro log is an 
 editable WebView that can be modified at will. Finally, you can now
-record all display output into a quicktime movie.
+record and save all display output into a quicktime movie.
 
-![Icon](http://injectionforxcode.johnholdsworth.com/remote.png)
+![Icon](http://injectionforxcode.johnholdsworth.com/remote.png?a=1)
 
 To use, download the zipped source for this plugin, build and restart 
 Xcode. You can then patch your project's main.m to include the Remote 

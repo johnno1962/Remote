@@ -21,7 +21,7 @@
 
 - (RMImageView *)imageView;
 - (void)resize:(NSSize)size;
-- (void)updateImage:(CGImageRef)img size:(NSSize)size;
+- (void)updateImage:(NSImage *)image;
 
 - (void)reset;
 - (NSTimeInterval)timeSinceLastEvent;

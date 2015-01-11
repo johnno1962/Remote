@@ -15,7 +15,7 @@
     int touches;
 }
 
-- (void)drawEvent:(const struct _rmevent *)newEvent {
+- (void)drawTouches:(const struct _rmevent *)newEvent {
     if ( newEvent ) {
         event = *newEvent;
         switch ( event.phase ) {

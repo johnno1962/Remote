@@ -12,9 +12,6 @@
 #import "RMMacroManager.h"
 #import "RMImageView.h"
 
-#include <sys/ioctl.h>
-#include <net/if.h>
-
 @implementation NSTextCheckingResult(groups)
 
 - (NSString *)groupAtIndex:(NSUInteger)index inString:(NSString *)string {
@@ -100,8 +97,11 @@ static int serverSocket;
     }
 }
 
+#include <sys/ioctl.h>
+#include <net/if.h>
+
 - (NSArray *)serverAddresses {
-    NSMutableArray *addrs = [NSMutableArray arrayWithObjects: nil];
+    NSMutableArray *addrs = [NSMutableArray new];
     char buffer[1024];
     struct ifconf ifc;
     ifc.ifc_len = sizeof buffer;
@@ -153,17 +153,15 @@ static int serverSocket;
     return imageView;
 }
 
-- (void)updateImage:(CGImageRef)img size:(NSSize)size {
-    NSImage *image = [[NSImage alloc] initWithCGImage:img size:size];
-    [self.imageView performSelectorOnMainThread:@selector(setImage:) withObject:image waitUntilDone:NO];
-    [manager updateImage:image];
-    CGImageRelease(img);
+- (void)updateImage:(NSImage *)image {
+    imageView.image = image;
+    [manager recordImage:image];
 }
 
 - (void)setDevice:(RMDeviceController *)device {
     if ( !(_device = device) ) {
         NSString *pngPath = [[NSBundle bundleForClass:[self class]] pathForResource:@"iphone" ofType:@"png"];
-        [self imageView].image = [[NSImage alloc] initWithData:[NSData dataWithContentsOfFile:pngPath]];
+        imageView.image = [[NSImage alloc] initWithData:[NSData dataWithContentsOfFile:pngPath]];
     }
 }
 

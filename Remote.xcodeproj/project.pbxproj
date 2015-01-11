@@ -84,7 +84,6 @@
 		089C166AFE841209C02AAC07 /* QuietXcode */ = {
 			isa = PBXGroup;
 			children = (
-				BB61FC291A629AC300833642 /* QTKit.framework */,
 				BB82F0CC1913D15F0015AE7A /* README.md */,
 				BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */,
 				7F411B0C15FABAC6002F77B6 /* Classes */,
@@ -100,6 +99,7 @@
 			children = (
 				089C1672FE841209C02AAC07 /* Foundation.framework */,
 				7F2EB899145057EA00E97A87 /* AppKit.framework */,
+				BB61FC291A629AC300833642 /* QTKit.framework */,
 				BBBD4F531A4AEA35009969E1 /* libz.dylib */,
 			);
 			name = "Frameworks and Libraries";

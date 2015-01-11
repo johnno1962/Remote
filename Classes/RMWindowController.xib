@@ -154,7 +154,7 @@
                         <action selector="delete:" target="uwN-HT-8jm" id="rFr-dO-YaQ"/>
                     </connections>
                 </button>
-                <box autoresizesSubviews="NO" title="Movie" borderType="line" id="AJv-61-FKt">
+                <box autoresizesSubviews="NO" title="Movie Capture" borderType="line" id="AJv-61-FKt">
                     <rect key="frame" x="15" y="5" width="231" height="47"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                     <view key="contentView">
@@ -175,8 +175,8 @@
                             <button verticalHuggingPriority="750" id="VBf-cz-bds">
                                 <rect key="frame" x="79" y="7" width="70" height="19"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <buttonCell key="cell" type="roundRect" title="Pause" bezelStyle="roundedRect" alignment="center" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="oWO-D5-YgK">
-                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                <buttonCell key="cell" type="roundRect" title="Pause" bezelStyle="roundedRect" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="oWO-D5-YgK">
+                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES" changeBackground="YES" changeGray="YES"/>
                                     <font key="font" metaFont="cellTitle"/>
                                 </buttonCell>
                                 <connections>
@@ -186,7 +186,7 @@
                             <button verticalHuggingPriority="750" id="4KD-Sz-YFj">
                                 <rect key="frame" x="157" y="7" width="70" height="19"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <buttonCell key="cell" type="roundRect" title="Stop" bezelStyle="roundedRect" alignment="center" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="peA-og-0CW">
+                                <buttonCell key="cell" type="roundRect" title="Stop" bezelStyle="roundedRect" alignment="center" enabled="NO" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="peA-og-0CW">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="cellTitle"/>
                                 </buttonCell>
@@ -232,6 +232,9 @@
         </window>
         <customObject id="uwN-HT-8jm" customClass="RMMacroManager">
             <connections>
+                <outlet property="bPause" destination="VBf-cz-bds" id="wXk-X4-PO5"/>
+                <outlet property="bRecord" destination="CLi-7d-tdt" id="QfQ-cL-wGO"/>
+                <outlet property="bStop" destination="4KD-Sz-YFj" id="ICz-cY-rvg"/>
                 <outlet property="loader" destination="QFe-9E-qUX" id="v2S-1B-JAk"/>
                 <outlet property="macroName" destination="IHb-a3-qVE" id="8gQ-SF-oKO"/>
                 <outlet property="owner" destination="-2" id="HdF-Vd-mKa"/>

@@ -101,7 +101,7 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
             while ( newFrame.length != -1 &&
                    fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame );
 
-            [owner.imageView drawEvent:&event];
+            [owner.imageView drawTouches:&event];
 
             [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
                                     withObject:arg waitUntilDone:NO];
@@ -145,7 +145,10 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
 
         currentBuffer = buffer;
 
-        [owner updateImage:[currentBuffer cgImage] size:newSize];
+        CGImageRef img = [currentBuffer cgImage];
+        NSImage *image = [[NSImage alloc] initWithCGImage:img size:newSize];
+        CGImageRelease(img);
+        [(NSObject *)owner performSelectorOnMainThread:@selector(updateImage:) withObject:image waitUntilDone:NO];
     }
 
 close:
@@ -224,7 +227,7 @@ close:
 }
 
 - (void)writeEvent:(const struct _rmevent *)event {
-    [owner.imageView drawEvent:event];
+    [owner.imageView drawTouches:event];
     if ( event && write( clientSocket, event, sizeof *event ) != sizeof *event )
         NSLog( @"Remote: event write error" );
 }

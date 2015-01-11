@@ -16,6 +16,6 @@
 - (void)updateDivWithID:(NSString *)divID withInnerHTML:(NSString *)snapshotHTML;
 - (void)logAnimate:(NSString *)divID;
 - (void)replayMacro:(NSString *)name;
-- (void)updateImage:(NSImage *)image;
+- (void)recordImage:(NSImage *)image;
 
 @end
