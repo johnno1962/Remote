@@ -8,7 +8,7 @@ output against a snapshot for end-to-end testing. The Macro log is an
 editable WebView that can be modified at will. Finally, you can now
 record and save all display output into a quicktime movie.
 
-![Icon](http://injectionforxcode.johnholdsworth.com/remote.png?a=1)
+![Icon](http://injectionforxcode.johnholdsworth.com/remote.gif)
 
 To use, download the zipped source for this plugin, build and restart 
 Xcode. You can then patch your project's main.m to include the Remote 
