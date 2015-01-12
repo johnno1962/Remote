@@ -377,7 +377,7 @@ static CGFloat windowTitleHeight = 22.;
                         "<img class=\"snapshot\" src=\"data:image/png;base64,%%@\" onclick=\"showSnapshot(this)\">"
                         "<span style=\"display:none\">%%@</span><p>",
                         defaultTimeout, tolerance];
-    return [self.device snapshot:nil withFormat:format];
+    return [self.device snapshot:buffer withFormat:format];
 }
 
 - (NSImage *)recoverImage:(NSString *)enc64 {
