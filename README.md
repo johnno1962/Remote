@@ -11,8 +11,7 @@ record and save all display output into a quicktime movie.
 ![Icon](http://injectionforxcode.johnholdsworth.com/remote.gif)
 
 (The gif shows the recording of a macro, saving it and then playing it
-back - testing the screen is as expected in the snapshot. Gif made using
-the excellent GIFBrewery from the Mac App Store)
+back - testing the screen is as expected in the snapshot.)
 
 To use, download the zipped source for this plugin, build and restart 
 Xcode. You can then patch your project's main.m to include the Remote 
