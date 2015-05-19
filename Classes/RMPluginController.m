@@ -13,9 +13,17 @@ static RMPluginController *remotePlugin;
 
 @interface INPluginMenuController : NSObject
 + (BOOL)loadRemote:(NSString *)resourcePath;
++ (BOOL)loadBundleForPlugin:(NSString *)resourcePath;
 @end
 
+typedef NS_ENUM(int, DBGState) {
+    DBGStateIdle,
+    DBGStatePaused,
+    DBGStateRunning
+};
+
 @interface DBGLLDBSession : NSObject
+- (DBGState)state;
 - (void)requestPause;
 - (void)requestContinue;
 - (void)evaluateExpression:(id)a0 threadID:(unsigned long)a1 stackFrameID:(unsigned long)a2 queue:(id)a3 completionHandler:(id)a4;
@@ -102,7 +110,13 @@ static RMPluginController *remotePlugin;
     if ( remote.device )
         return;
 
-    Class injectionPlugin = NSClassFromString(@"INPluginMenuController");
+    Class injectionPlugin = NSClassFromString(@"JuicePluginController");
+    if ( [injectionPlugin respondsToSelector:@selector(loadBundleForPlugin:)] &&
+        [injectionPlugin loadBundleForPlugin:[self resourcePath]] )
+        return;
+
+
+    injectionPlugin = NSClassFromString(@"INPluginMenuController");
     if ( [injectionPlugin respondsToSelector:@selector(loadRemote:)] &&
         [injectionPlugin loadRemote:[self resourcePath]] )
         return;
@@ -115,20 +129,24 @@ static RMPluginController *remotePlugin;
                         defaultButton:@"OK" alternateButton:nil otherButton:nil
              informativeTextWithFormat:@"Program is not running."] runModal];
     else {
-        [session requestPause];
+        if ( session.state != DBGStatePaused )
+            [session requestPause];
         [self performSelector:@selector(loadBundle:) withObject:session afterDelay:.1];
     }
 }
 
 - (void)loadBundle:(DBGLLDBSession *)session {
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND,0), ^{
-        NSString *loader = [NSString stringWithFormat:@"p (void)[[NSBundle bundleWithPath:"
-                            "@\"%@/RemoteBundle.loader\"] load]\r", [self resourcePath]];
-        [session executeConsoleCommand:loader threadID:1 stackFrameID:0];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [session requestContinue];
+    if ( session.state != DBGStatePaused )
+        [self performSelector:@selector(loadBundle:) withObject:session afterDelay:.1];
+    else
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND,0), ^{
+            NSString *loader = [NSString stringWithFormat:@"p (void)[[NSBundle bundleWithPath:"
+                                "@\"%@/SimBundle.loader\"] load]\r", [self resourcePath]];
+            [session executeConsoleCommand:loader threadID:1 stackFrameID:0];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [session requestContinue];
+            });
         });
-    });
 }
 
 - (IBAction)replayMacro:(NSMenuItem *)sender {

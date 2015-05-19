@@ -22,6 +22,8 @@
 #else
     if ( [injectionLoader respondsToSelector:@selector(connectedAddress)] )
         [RemoteCapture startCapture:[NSString stringWithUTF8String:[injectionLoader connectedAddress]]];
+    else
+        NSLog( @"Remote requires BundleInjection class to work on device" );
 #endif
     [injectionLoader loadedNotify:0 hook:NULL];
 }
