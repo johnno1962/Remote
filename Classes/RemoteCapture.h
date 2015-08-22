@@ -12,8 +12,10 @@
 #import <arpa/inet.h>
 
 #define INJECTION_PORT 31442
+#define APPCODE_PORT 31444
+#define XPROBE_PORT 31448
+#define REMOTE_PORT 31449
 #define REMOTE_APPNAME "Remote"
-#define REMOTE_PORT INJECTION_PORT+2
 #define REMOTE_MINDIFF (3*sizeof(unsigned))
 
 #ifdef DEBUG
@@ -360,6 +362,7 @@ static int skipEcho, pending;
         });
 }
 
+static UITouchesEvent *event;
 + (void)processEvents {
     FILE *eventStream = fdopen(connectionSocket, "r");
 
@@ -374,7 +377,6 @@ static int skipEcho, pending;
             static UITextAutocorrectionType saveAuto;
             static UITouch *currentTouch2;
             static UIView *currentTarget;
-            static UITouchesEvent *event;
 
             switch ( rpevent.phase ) {
 
@@ -417,7 +419,15 @@ static int skipEcho, pending;
                         textField.autocorrectionType = UITextAutocorrectionTypeNo;
                     }
 
-                    currentTouch = [[UITouch alloc] init];
+                    NSLog( @"HERE" );
+
+                    if ( !event )
+                        event = [[objc_getClass("UITouchesEvent") alloc] _init];
+                    [event _clearTouches];
+
+                    if ( !currentTouch )
+                        currentTouch = [[UITouch alloc] init];
+                    NSLog( @"!!%@", currentTouch );
 
                     [currentTouch setWindow:currentTarget.window];
                     [currentTouch setView:currentTarget];
@@ -432,9 +442,7 @@ static int skipEcho, pending;
 
                     currentTouches = [NSSet setWithObjects:currentTouch, currentTouch2, nil];
 
-                    if ( !event )
-                        event = [[objc_getClass("UITouchesEvent") alloc] _init];
-                    [event _clearTouches];
+                    NSLog( @">>%@", currentTouch );
                     [event _addTouch:currentTouch forDelayedDelivery:NO];
                     if ( currentTouch2 )
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
@@ -521,9 +529,11 @@ static int skipEcho, pending;
 
 @implementation UIApplication(RemoteCapture)
 
-- (void)in_sendEvent:(UIEvent *)event {
+- (void)in_sendEvent:(UIEvent *)_event {
+    event = _event;
     [self in_sendEvent:event];
     NSSet *touches = event.allTouches;
+    currentTouch = touches.anyObject;
 #if 0
     RMLog( @"%@", event );
     for ( UITouch *t in touches )
