@@ -12,8 +12,10 @@
 #import <arpa/inet.h>
 
 #define INJECTION_PORT 31442
+#define APPCODE_PORT 31444
+#define XPROBE_PORT 31448
+#define REMOTE_PORT 31449
 #define REMOTE_APPNAME "Remote"
-#define REMOTE_PORT INJECTION_PORT+2
 #define REMOTE_MINDIFF (3*sizeof(unsigned))
 
 #ifdef DEBUG
