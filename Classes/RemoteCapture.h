@@ -362,6 +362,8 @@ static int skipEcho, pending;
         });
 }
 
+static UITouchesEvent *event;
+
 + (void)processEvents {
     FILE *eventStream = fdopen(connectionSocket, "r");
 
@@ -372,11 +374,10 @@ static int skipEcho, pending;
         dispatch_sync(dispatch_get_main_queue(), ^{
             CGPoint location = {rpevent.touches[0].x, rpevent.touches[0].y},
                 location2 = {rpevent.touches[1].x, rpevent.touches[1].y};
-            UIEvent *fakeEvent = (UIEvent *)[[BCEvent alloc] init];
+            //UIEvent *fakeEvent = (UIEvent *)[[BCEvent alloc] init];
             static UITextAutocorrectionType saveAuto;
             static UITouch *currentTouch2;
             static UIView *currentTarget;
-            static UITouchesEvent *event;
 
             switch ( rpevent.phase ) {
 
@@ -419,7 +420,12 @@ static int skipEcho, pending;
                         textField.autocorrectionType = UITextAutocorrectionTypeNo;
                     }
 
-                    currentTouch = [[UITouch alloc] init];
+                    if ( !currentTouch ) {
+                        NSOperatingSystemVersion minimumVersion = {9, 0, 0};
+                        if ( [[NSProcessInfo new] isOperatingSystemAtLeastVersion:minimumVersion] )
+                            NSLog( @"RemoteCapture: *** Initial event from device required for iOS 9+ ***" );
+                        currentTouch = [[UITouch alloc] init];
+                    }
 
                     [currentTouch setWindow:currentTarget.window];
                     [currentTouch setView:currentTarget];
@@ -434,6 +440,8 @@ static int skipEcho, pending;
 
                     currentTouches = [NSSet setWithObjects:currentTouch, currentTouch2, nil];
 
+                    //if ( !event )
+                    //    event = [[UIApplication sharedApplication] valueForKey:@"_touchesEvent"];
                     if ( !event )
                         event = [[objc_getClass("UITouchesEvent") alloc] _init];
                     [event _clearTouches];
@@ -442,7 +450,7 @@ static int skipEcho, pending;
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
 
                     [[UIApplication sharedApplication] in_sendEvent:(UIEvent *)event];
-                    [currentTarget touchesBegan:currentTouches withEvent:fakeEvent];
+                    [currentTarget touchesBegan:currentTouches withEvent:event];
                     break;
 
                 case RMTouchMoved:
@@ -461,7 +469,7 @@ static int skipEcho, pending;
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
 
                     [[UIApplication sharedApplication] in_sendEvent:(UIEvent *)event];
-                    [currentTarget touchesMoved:currentTouches withEvent:fakeEvent];
+                    [currentTarget touchesMoved:currentTouches withEvent:event];
                     break;
 
                 case RMTouchEnded:
@@ -480,14 +488,15 @@ static int skipEcho, pending;
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
 
                     [[UIApplication sharedApplication] in_sendEvent:(UIEvent *)event];
-                    [currentTarget touchesEnded:currentTouches withEvent:fakeEvent];
+                    [currentTarget touchesEnded:currentTouches withEvent:event];
 
                     if ( [currentTarget respondsToSelector:@selector(setAutocorrectionType:)] ) {
                         UITextField *textField = (UITextField *)currentTarget;
                         textField.autocorrectionType = saveAuto;
                     }
 
-                    currentTouch = currentTouch2 = nil;
+                    //currentTouch =
+                    currentTouch2 = nil;
                     currentTarget = nil;
                     break;
                     
@@ -523,9 +532,14 @@ static int skipEcho, pending;
 
 @implementation UIApplication(RemoteCapture)
 
-- (void)in_sendEvent:(UIEvent *)event {
-    [self in_sendEvent:event];
+- (void)in_sendEvent:(UIEvent *)anEvent {
+    [self in_sendEvent:anEvent];
     NSSet *touches = event.allTouches;
+
+    event = (UITouchesEvent *)anEvent;
+//    if ( !currentTouch )
+        currentTouch = [touches anyObject];
+
 #if 0
     RMLog( @"%@", event );
     for ( UITouch *t in touches )
