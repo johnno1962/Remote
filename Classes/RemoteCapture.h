@@ -129,6 +129,10 @@ static NSSet *currentTouches;
     RMLog( @"_addWindowAwaitingLatentSystemGestureNotification:%@ deliveredToEventWindow:%@", a0, a1 );
 }
 
+- (long)type {
+    return 0;
+}
+
 @end
 
 @interface NSObject(ForwardReference)
@@ -421,9 +425,9 @@ static UITouchesEvent *event;
                     }
 
                     if ( !currentTouch ) {
-                        NSOperatingSystemVersion minimumVersion = {9, 0, 0};
+                        NSOperatingSystemVersion minimumVersion = {8, 4, 0};
                         if ( [[NSProcessInfo new] isOperatingSystemAtLeastVersion:minimumVersion] )
-                            NSLog( @"RemoteCapture: *** Initial event from device required for iOS 9+ ***" );
+                            NSLog( @"RemoteCapture: *** Initial event from device required for iOS 8.4+ ***" );
                         currentTouch = [[UITouch alloc] init];
                     }
 
@@ -536,9 +540,11 @@ static UITouchesEvent *event;
     [self in_sendEvent:anEvent];
     NSSet *touches = anEvent.allTouches;
 
-    event = (UITouchesEvent *)anEvent;
-//    if ( !currentTouch )
-        currentTouch = [touches anyObject];
+    if ( [anEvent isKindOfClass:objc_getClass("UITouchesEvent")] ) {
+        event = (UITouchesEvent *)anEvent;
+    //    if ( !currentTouch )
+            currentTouch = [touches anyObject];
+    }
 
 #if 0
     RMLog( @"%@", event );
