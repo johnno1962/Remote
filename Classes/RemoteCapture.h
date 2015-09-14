@@ -374,7 +374,7 @@ static UITouchesEvent *event;
         dispatch_sync(dispatch_get_main_queue(), ^{
             CGPoint location = {rpevent.touches[0].x, rpevent.touches[0].y},
                 location2 = {rpevent.touches[1].x, rpevent.touches[1].y};
-            //UIEvent *fakeEvent = (UIEvent *)[[BCEvent alloc] init];
+            UIEvent *fakeEvent = (UIEvent *)[[BCEvent alloc] init];
             static UITextAutocorrectionType saveAuto;
             static UITouch *currentTouch2;
             static UIView *currentTarget;
@@ -450,7 +450,7 @@ static UITouchesEvent *event;
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
 
                     [[UIApplication sharedApplication] in_sendEvent:(UIEvent *)event];
-                    [currentTarget touchesBegan:currentTouches withEvent:event];
+                    [currentTarget touchesBegan:currentTouches withEvent:fakeEvent];
                     break;
 
                 case RMTouchMoved:
@@ -469,7 +469,7 @@ static UITouchesEvent *event;
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
 
                     [[UIApplication sharedApplication] in_sendEvent:(UIEvent *)event];
-                    [currentTarget touchesMoved:currentTouches withEvent:event];
+                    [currentTarget touchesMoved:currentTouches withEvent:fakeEvent];
                     break;
 
                 case RMTouchEnded:
@@ -488,7 +488,7 @@ static UITouchesEvent *event;
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
 
                     [[UIApplication sharedApplication] in_sendEvent:(UIEvent *)event];
-                    [currentTarget touchesEnded:currentTouches withEvent:event];
+                    [currentTarget touchesEnded:currentTouches withEvent:fakeEvent];
 
                     if ( [currentTarget respondsToSelector:@selector(setAutocorrectionType:)] ) {
                         UITextField *textField = (UITextField *)currentTarget;
@@ -534,7 +534,7 @@ static UITouchesEvent *event;
 
 - (void)in_sendEvent:(UIEvent *)anEvent {
     [self in_sendEvent:anEvent];
-    NSSet *touches = event.allTouches;
+    NSSet *touches = anEvent.allTouches;
 
     event = (UITouchesEvent *)anEvent;
 //    if ( !currentTouch )
