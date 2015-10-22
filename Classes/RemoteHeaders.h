@@ -98,7 +98,7 @@ typedef CFTypeRef __IOHIDEvent;
 - (long)_compareIndex:(id)a0 ;
 - (BOOL)_isStationaryRelativeToTouches:(id)a0 ;
 - (CGFloat)_distanceFrom:(id)a0 inView:(id)a1 ;
-- (long)type ;
+//- (long)type ;
 //- (id)window ;
 - (long)info ;
 //- (CGFloat)timestamp ;
