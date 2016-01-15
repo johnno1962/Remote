@@ -56,7 +56,7 @@ typedef NS_ENUM(int, DBGState) {
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     if ( ![[NSBundle bundleForClass:[self class]] loadNibNamed:[self className] owner:self topLevelObjects:NULL] ) {
-        if ( [[NSAlert alertWithMessageText:@"Replay Plugin:"
+        if ( [[NSAlert alertWithMessageText:@"Remote Plugin:"
                               defaultButton:@"OK" alternateButton:@"Goto GitHub" otherButton:nil
                   informativeTextWithFormat:@"Could not load interface nib. This is a problem when using Alcatraz since Xcode6. Please download and build from the sources on GitHub."]
               runModal] == NSAlertAlternateReturn )
