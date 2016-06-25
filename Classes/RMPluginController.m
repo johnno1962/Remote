@@ -48,9 +48,9 @@ typedef NS_ENUM(int, DBGState) {
     if ([currentApplicationName isEqual:@"Xcode"])
         dispatch_once(&onceToken, ^{
             remotePlugin = [[self alloc] init];
-            [[NSNotificationCenter defaultCenter] addObserver:remotePlugin
-                                                     selector:@selector(applicationDidFinishLaunching:)
-                                                         name:NSApplicationDidFinishLaunchingNotification object:nil];
+            dispatch_async( dispatch_get_main_queue(), ^{
+                [remotePlugin applicationDidFinishLaunching:nil];
+            } );
         });
 }
 
