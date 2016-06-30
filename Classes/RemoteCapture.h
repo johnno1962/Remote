@@ -24,6 +24,9 @@
 #define RMLog while(0) NSLog
 #endif
 
+#import <Foundation/Foundation.h>
+#import <CoreGraphics/CoreGraphics.h>
+
 typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchBeganDouble = -1,
     RMTouchBegan = 0,
