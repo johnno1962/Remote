@@ -8,7 +8,12 @@
 
 #import "RMMacroManager.h"
 #import <WebKit/WebKit.h>
+
+#if __has_include(<QTKit/QTKit.h>)
 #import <QTKit/QTKit.h>
+#else
+#define _XCODE_8
+#endif
 
 #import "RMWindowController.h"
 
@@ -192,10 +197,17 @@
 static NSString *movieTmp = @"/tmp/remote.m4v";
 
 - (IBAction)record:sender {
+#ifndef _XCODE_8
     movie = [[QTMovie alloc] initToWritableFile:movieTmp error:NULL];
     lastImageTime = [NSDate timeIntervalSinceReferenceDate];
     bRecord.enabled = FALSE;
     bStop.enabled = TRUE;
+#else
+    [[NSAlert alertWithMessageText:@"Remote Plugin:"
+                     defaultButton:@"OK" alternateButton:nil otherButton:nil
+         informativeTextWithFormat:@"QuickTime framework is not available when compiled under Xcode 8."]
+     runModal];
+#endif
 }
 
 - (IBAction)pause:sender {
@@ -209,7 +221,9 @@ static NSString *movieTmp = @"/tmp/remote.m4v";
     bRecord.enabled = TRUE;
     bStop.enabled = FALSE;
     [self recordImage:nil];
+#ifndef _XCODE_8
     [movie updateMovieFile];
+#endif
     movie = nil;
 
     NSSavePanel *saver = [NSSavePanel savePanel];
@@ -234,9 +248,11 @@ static NSString *movieTmp = @"/tmp/remote.m4v";
         long timeScale = 600;
         long long timeValue = (now-lastImageTime)*timeScale;
 
+#ifndef _XCODE_8
         [movie addImage:lastImage forDuration:QTMakeTime(timeValue, timeScale)
          withAttributes:@{QTAddImageCodecType: @"mp4v",
                           QTAddImageCodecQuality: [NSNumber numberWithLong:codecHighQuality]}];
+#endif
     }
 
     lastImageTime = now;
