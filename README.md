@@ -71,6 +71,9 @@ RemoteCapture.h requires a patched main.m to be compiled using ARC.
 
 ### Limitations
 
+Since iOS 10 Remote has required an initial tap event from the deivce so it can 
+use this to forge subseqeunt events - then you have control.
+
 Remote uses [UIWindow.layer renderInContext:] so most activity on the device is 
 captured including the keyboard but excepting video replay and openGL layers.
 UIAlertView prompts are also not captured as they seem to render outside the window
