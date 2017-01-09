@@ -20,21 +20,21 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
 // run length encoding used to only transmit differrences between frames
 - (void)recover:(const void *)tmp against:(RemoteCapture *)prevbuff {
 
-    register unsigned expectedDiff = 0, check = 0, *data = (unsigned *)tmp;
-    for ( register unsigned
+    register rmencoded_t expectedDiff = 0, check = 0, *data = (rmencoded_t *)tmp;
+    for ( register rmpixel_t
          *curr = self->buffer,
          *prev = prevbuff->buffer;
          curr < self->buffend ; ) {
 
-        unsigned diff = *data++;
+        register rmencoded_t diff = *data++;
         unsigned count = diff & 0xff;
-
         diff &= 0xffffff00;
+
         check += *curr++ = (*prev++ + diff + expectedDiff) | 0x000000ff;
         if ( count ) {
             if ( count == 0xff )
                 count = *data++;
-            for ( unsigned i=0 ; i<count && curr < self->buffend ; i++ )
+            for ( register rmpixel_t *end = MIN(curr + count, self->buffend) ; curr < end ; )
                 check += *curr++ = (*prev++ + diff + expectedDiff) | 0x000000ff;
         }
 
@@ -68,6 +68,8 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
     FILE *renderStream = fdopen( clientSocket, "r" );
     NSArray *buffers;
     int frameno = 0;
+    void *tmp = NULL;
+    int tmpsize = 0;
 
     if( fread(&device, 1, sizeof device, renderStream) != sizeof device )
         NSLog( @"Could not read device info" );
@@ -96,7 +98,7 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
                     event.touches[touchno].x = newFrame.x;
                     event.touches[touchno].y = newFrame.y;
                 }
-                [arg appendFormat:@" %.1f %.1f", newFrame.x, newFrame.y];
+                [arg appendFormat:@" x:%.1f y:%.1f", newFrame.x, newFrame.y];
             }
             while ( newFrame.length != -1 &&
                    fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame );
@@ -116,7 +118,7 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
                 [owner resize:NSMakeSize(newFrame.width, newFrame.height)];
             });
 
-            NSString *deviceString = [NSString stringWithFormat:@"Device %g %g %g %g",
+            NSString *deviceString = [NSString stringWithFormat:@"Device w:%g h:%g iscale:%g scale:%g",
                                       newFrame.width, newFrame.height, newFrame.imageScale, device.scale];
             [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
                                                 withObject:deviceString waitUntilDone:NO];
@@ -131,7 +133,12 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
         frame = newFrame;
 
         //NSLog( @"Incoming bytes from client: %u", frame.length );
-        void *tmp = malloc(frame.length);
+        if ( tmpsize < frame.length ) {
+            free( tmp );
+            tmp = malloc(frame.length);
+            tmpsize = frame.length;
+        }
+
         if ( fread(tmp, 1, frame.length, renderStream) != frame.length )
             break;
 
@@ -140,9 +147,8 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
         RemoteCapture *prevbuff = buffers[frameno%2];
         
         [buffer recover:tmp against:prevbuff];
-        free(tmp);
-
         currentBuffer = buffer;
+
         [owner updateImage:[currentBuffer cgImage]];
     }
 
@@ -150,6 +156,7 @@ close:
     NSLog( @"renderService exits" );
     fclose( renderStream );
     owner.device = nil;
+    free(tmp);
 }
 
 - (NSString *)snapshot:(RemoteCapture *)reference withFormat:(NSString *)format {
@@ -237,7 +244,7 @@ close:
         case RMTouchCancelled: phaseString = @"Cancelled"; break;
         default: phaseString = @"Unknown";
     }
-    return [NSMutableString stringWithFormat:@"%@ %.3f",
+    return [NSMutableString stringWithFormat:@"%@ t:%.3f",
             phaseString, [owner timeSinceLastEvent]];
 }
 
@@ -250,7 +257,7 @@ close:
     [self writeEvent:&event];
 
     NSMutableString *arg = [self startEvent:phase];
-    [arg appendFormat:@" %.1f %.1f", event.touches[0].x, event.touches[0].y];
+    [arg appendFormat:@" x:%.1f y:%.1f", event.touches[0].x, event.touches[0].y];
     [owner logAdd:arg];
 }
 

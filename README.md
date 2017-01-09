@@ -8,6 +8,12 @@ output against a snapshot for end-to-end testing. The Macro log is an
 editable WebView that can be modified at will. Finally, you can now
 record and save all display output into a quicktime movie.
 
+
+### Stop Press
+
+Remote is now available as part of the Injection standalone App
+available [here](http://johnholdsworth.com/injection.html).
+
 ![Icon](http://injectionforxcode.johnholdsworth.com/remote.gif)
 
 (The gif shows the recording of a macro, saving it and then playing it
@@ -71,14 +77,13 @@ RemoteCapture.h requires a patched main.m to be compiled using ARC.
 
 ### Limitations
 
-Since iOS 10 Remote has required an initial tap event from the deivce so it can 
-use this to forge subseqeunt events - then you have control.
-
 Remote uses [UIWindow.layer renderInContext:] so most activity on the device is 
 captured including the keyboard but excepting video replay and openGL layers.
 UIAlertView prompts are also not captured as they seem to render outside the window
 hierarchy. Finally, UIDatePickers are not rendered correctly at all although they will 
 respond to events. To preserve network bandwidth to the device animations are not played.
+
+Remote performs better with swipe events if you make an initial tap on the device.
 
 Please note: for some reason it takes about a minute before Xcode will accept remote
 connections on it's server socket (firewall complications?). After restarting Xcode

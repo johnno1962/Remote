@@ -12,6 +12,9 @@
 #import "RMMacroManager.h"
 #import "RMImageView.h"
 
+#include <sys/ioctl.h>
+#include <net/if.h>
+
 @implementation NSTextCheckingResult(groups)
 
 - (NSString *)groupAtIndex:(NSUInteger)index inString:(NSString *)string {
@@ -34,7 +37,8 @@
 
 @end
 
-static RMWindowController *sharedInstance;
+RMWindowController *lastRMWindowController;
+static NSMutableDictionary<NSString *,RMWindowController *> *connectionWindows;
 static int serverSocket;
 
 @implementation RMWindowController
@@ -51,6 +55,8 @@ static int serverSocket;
 }
 
 + (void)startServer {
+    connectionWindows = [NSMutableDictionary new];
+
     struct sockaddr_in serverAddr;
 
     serverAddr.sin_family = AF_INET;
@@ -88,19 +94,25 @@ static int serverSocket;
             if ( setsockopt( clientSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0 )
                 [self error:@"Set TCP_NODELAY %s", strerror(errno)];
 
-            NSLog( @"RMWindowController: Connection from %s:%d",
-                  inet_ntoa( clientAddr.sin_addr ), ntohs( clientAddr.sin_port ) );
-            sharedInstance.device = [[RMDeviceController alloc] initSocket:clientSocket owner:sharedInstance];
+            NSString *ipAddr = [NSString stringWithUTF8String:inet_ntoa( clientAddr.sin_addr )];
+            NSLog( @"RMWindowController: Connection from %@:%d", ipAddr, ntohs( clientAddr.sin_port ) );
+
+            dispatch_sync( dispatch_get_main_queue(), ^{
+                lastRMWindowController = connectionWindows[ipAddr];
+                if ( !lastRMWindowController )
+                    connectionWindows[ipAddr] = lastRMWindowController = [[self class] new];
+                [NSApp activateIgnoringOtherApps:YES];
+                [lastRMWindowController showWindow:nil];
+                lastRMWindowController.window.title = [NSString stringWithFormat:@"Connection from %@", ipAddr];
+                lastRMWindowController.device = [[RMDeviceController alloc] initSocket:clientSocket owner:lastRMWindowController];
+            } );
         }
         else
             [NSThread sleepForTimeInterval:.5];
     }
 }
 
-#include <sys/ioctl.h>
-#include <net/if.h>
-
-- (NSArray *)serverAddresses {
++ (NSArray *)serverAddresses {
     NSMutableArray *addrs = [NSMutableArray new];
     char buffer[1024];
     struct ifconf ifc;
@@ -126,12 +138,7 @@ static int serverSocket;
 }
 
 - (instancetype)init {
-    if ( (self = [super initWithWindowNibName:[self className]]) ) {
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^{
-            [[self class] startServer];
-        });
-        sharedInstance = self;
+    if ( (self = [super initWithWindowNibName:self.className]) ) {
         [self loadWindow];
         [manager updateLoaderItems];
     }
@@ -216,10 +223,10 @@ static CGFloat windowTitleHeight = 22.;
     static NSRegularExpression *parser;
     if ( !parser )
         parser = [NSRegularExpression regularExpressionWithPattern:@"<div id=\"([^\"]+)\"[^>]*>\\s*("
-                  "(Began|Moved|Ended) ([\\d.]+) ([\\d.]+) ([\\d.]+)( ([\\d.]+) ([\\d.]+))?|"
+                  "(Began|Moved|Ended) (?:t:)?([\\d.]+) (?:x:)?([\\d.]+) (?:y:)?([\\d.]+)( (?:x:)?([\\d.]+) (?:y:)?([\\d.]+))?|"
                   "Expect timeout:([\\d.]+) tolerance:(\\d+).+?"
                   "<span style=\"display:none\">([^<]+)</span>|"
-                  "Device (\\d+) (\\d+) (\\d+) (\\d+))" options:0 error:NULL];
+                  "Device (?:w:)?(\\d+) (?:h:)?(\\d+) (?:iscale:)?(\\d+) (?:scale:)?(\\d+))" options:0 error:NULL];
 
     [parser enumerateMatchesInString:html options:0 range:NSMakeRange(0,html.length)
                           usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {

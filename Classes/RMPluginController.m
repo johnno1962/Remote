@@ -9,7 +9,7 @@
 #import "RMPluginController.h"
 #import "RMWindowController.h"
 
-static RMPluginController *remotePlugin;
+RMPluginController *remotePlugin;
 
 @interface INPluginMenuController : NSObject
 + (BOOL)loadRemote:(NSString *)resourcePath;
@@ -31,8 +31,7 @@ typedef NS_ENUM(int, DBGState) {
 @end
 
 @implementation RMPluginController {
-    IBOutlet RMWindowController *remote;
-    IBOutlet NSMenuItem *remoteMenu;
+//    IBOutlet RMWindowController *remote;
     IBOutlet NSMenuItem *windowItem;
 
     NSWindowController *lastWindowController;
@@ -55,7 +54,7 @@ typedef NS_ENUM(int, DBGState) {
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
-    if ( ![[NSBundle bundleForClass:[self class]] loadNibNamed:[self className] owner:self topLevelObjects:NULL] ) {
+    if ( ![[NSBundle bundleForClass:[self class]] loadNibNamed:@"RMPluginController" owner:self topLevelObjects:NULL] ) {
         if ( [[NSAlert alertWithMessageText:@"Remote Plugin:"
                               defaultButton:@"OK" alternateButton:@"Goto GitHub" otherButton:nil
                   informativeTextWithFormat:@"Could not load interface nib. This is a problem when using Alcatraz since Xcode6. Please download and build from the sources on GitHub."]
@@ -66,7 +65,7 @@ typedef NS_ENUM(int, DBGState) {
 
     NSMenu *productMenu = [[NSApp mainMenu] itemWithTitle:@"Product"].submenu;
     [productMenu addItem:[NSMenuItem separatorItem]];
-    [productMenu addItem:remoteMenu];
+    [productMenu addItem:self.remoteMenu];
 
     NSMenu *windowMenu = [self windowMenu];
     NSInteger where = [windowMenu indexOfItemWithTitle:@"Bring All to Front"];
@@ -79,6 +78,12 @@ typedef NS_ENUM(int, DBGState) {
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(workspaceDidChange:)
                                                  name:NSWindowDidBecomeKeyNotification object:nil];
+
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        [[RMWindowController class] startServer];
+        remotePlugin = self;
+    });
 }
 
 - (void)workspaceDidChange:(NSNotification *)notification {
@@ -106,8 +111,8 @@ typedef NS_ENUM(int, DBGState) {
 
 - (IBAction)load:sender {
 
-    [remote showWindow:self];
-    if ( remote.device )
+    [lastRMWindowController showWindow:self];
+    if ( lastRMWindowController.device )
         return;
 
     Class injectionPlugin = NSClassFromString(@"JuicePluginController");
@@ -154,23 +159,23 @@ typedef NS_ENUM(int, DBGState) {
         macroName = [sender title];
         [self load:sender];
     }
-    if ( !remote.device )
+    if ( !lastRMWindowController.device )
         [self performSelector:@selector(replayMacro:) withObject:nil afterDelay:.5];
     else
-        [remote replayMacro:macroName];
+        [lastRMWindowController replayMacro:macroName];
 }
 
-- (IBAction)patch:sender {
+- (IBAction)patch:(NSMenuItem *)sender {
     [self runScript:@"patch"];
 }
 
-- (IBAction)unpatch:sender {
+- (IBAction)unpatch:(NSMenuItem *)sender {
     [self runScript:@"unpatch"];
 }
 
 - (void)runScript:(NSString *)script {
     NSMutableArray *args = [NSMutableArray arrayWithObjects:[self resourcePath], [self workspacePath], nil];
-    [args addObjectsFromArray:[remote serverAddresses]];
+    [args addObjectsFromArray:[RMWindowController serverAddresses]];
     scriptOutput = [NSMutableData new];
 
     NSTask *task = [NSTask new];

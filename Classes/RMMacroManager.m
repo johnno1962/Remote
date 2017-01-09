@@ -16,6 +16,7 @@
 #endif
 
 #import "RMWindowController.h"
+#import "RMPluginController.h"
 
 @implementation RMMacroManager {
     IBOutlet __weak RMWindowController *owner;
@@ -87,20 +88,21 @@
 - (void)updateLoaderItems {
     NSArray *macros = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self macroHome] error:NULL];
     macros = [[[macros sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]
-     reverseObjectEnumerator] allObjects];
+               reverseObjectEnumerator] allObjects];
 
     while ( loader.itemArray.count > 3 )
         [loader removeItemAtIndex:1];
     for ( NSString *name in macros )
         [loader insertItemWithTitle:name atIndex:1];
 
-    id target = [[owner.replayMenu itemArray][0] target];
-    while ( owner.replayMenu.itemArray.count > 3 )
-        [owner.replayMenu removeItemAtIndex:1];
+    NSMenu *replayMenu = remotePlugin.remoteMenu.submenu;
+    id target = [[replayMenu itemArray][0] target];
+    while ( replayMenu.itemArray.count > 3 )
+        [replayMenu removeItemAtIndex:1];
     for ( NSString *name in macros ) {
         NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:name action:@selector(replayMacro:) keyEquivalent:@""];
         item.target = target;
-        [owner.replayMenu insertItem:item atIndex:1];
+        [replayMenu insertItem:item atIndex:1];
     }
 }
 

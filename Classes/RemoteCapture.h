@@ -11,12 +11,15 @@
 #import <sys/socket.h>
 #import <arpa/inet.h>
 
+#ifndef REMOTE_PORT
 #define INJECTION_PORT 31442
 #define APPCODE_PORT 31444
 #define XPROBE_PORT 31448
 #define REMOTE_PORT 31449
+#endif
+
 #define REMOTE_APPNAME "Remote"
-#define REMOTE_MINDIFF (3*sizeof(unsigned))
+#define REMOTE_MINDIFF (3*sizeof(rmencoded_t))
 
 #ifdef DEBUG
 #define RMLog NSLog
@@ -26,6 +29,9 @@
 
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
+
+typedef unsigned rmpixel_t;
+typedef unsigned rmencoded_t;
 
 typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchBeganDouble = -1,
@@ -62,7 +68,7 @@ struct _rmframe {
 
 @interface RemoteCapture : NSObject {
 @package
-    unsigned *buffer, *buffend;
+    rmpixel_t *buffer, *buffend;
     CGContextRef cg;
 }
 
@@ -163,8 +169,8 @@ static NSSet *currentTouches;
         cg = CGBitmapContextCreate(NULL, size.width, size.height,
                                    bitsPerComponent, bytesPerRow, CGColorSpaceCreateDeviceRGB(),
                                    (CGBitmapInfo)kCGImageAlphaNoneSkipFirst);
-        buffer = (unsigned *)CGBitmapContextGetData(cg);
-        buffend = (unsigned *)((char *)buffer + bufferSize);
+        buffer = (rmpixel_t *)CGBitmapContextGetData(cg);
+        buffend = (rmpixel_t *)((char *)buffer + bufferSize);
         CGContextTranslateCTM(cg, 0, size.height);
         CGContextScaleCTM(cg, frame->imageScale, -frame->imageScale);
     }
@@ -173,14 +179,14 @@ static NSSet *currentTouches;
 
 - (NSData *)subtractAndEncode:(RemoteCapture *)prevbuff {
     unsigned tmpsize = 16*1024;
-    unsigned *tmp = (unsigned *)malloc(tmpsize*sizeof *tmp), *end = tmp + tmpsize-4;
+    rmencoded_t *tmp = (rmencoded_t *)malloc(tmpsize*sizeof *tmp), *end = tmp + tmpsize;
 
-    unsigned *out = tmp, count = 0, expectedDiff = 0, check = 0;
-    for ( register unsigned
+    rmencoded_t *out = tmp, count = 0, expectedDiff = 0, check = 0;
+    for ( register rmpixel_t
              *curr = buffer,
              *prev = prevbuff ? prevbuff->buffer : NULL ;
              curr < buffend ; check += *curr, curr++ ) {
-        unsigned ref = (prev ? *prev++ : 0), diff = *curr - ref - expectedDiff;
+        rmpixel_t ref = (prev ? *prev++ : 0), diff = *curr - ref - expectedDiff;
         if ( !diff && curr != buffer )
             count++;
         else {
@@ -195,17 +201,17 @@ static NSSet *currentTouches;
             }
 
             *out++ = diff & 0xffffff00;
+
+            if ( out + 4 >= end ) {
+                size_t ptr = out - tmp;
+                tmpsize *= 1.5;
+                tmp = (rmencoded_t *)realloc(tmp, tmpsize * sizeof *tmp);
+                out = tmp + ptr;
+                end = tmp + tmpsize;
+            }
         }
 
         expectedDiff = *curr - ref;
-
-        if ( out >= end ) {
-            size_t ptr = out - tmp;
-            tmpsize *= 1.1;
-            tmp = (unsigned *)realloc(tmp, tmpsize * sizeof *tmp);
-            out = tmp + ptr;
-            end = tmp + tmpsize-4;
-        }
     }
 
     if ( count ) {
@@ -287,7 +293,7 @@ static NSArray *screens;
 }
 
 + (int)connectTo:(const char *)ipAddress {
-    struct sockaddr_in loaderAddr;
+    static struct sockaddr_in loaderAddr;
 
     loaderAddr.sin_family = AF_INET;
     inet_aton( ipAddress, &loaderAddr.sin_addr );
@@ -348,11 +354,12 @@ static int skipEcho, pending;
     }
 
     pending = 0;
-    skipEcho = 3;
+    skipEcho = 2;
 
     NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
     NSData *out = [buffer subtractAndEncode:prevbuff];
     frame.length = (unsigned)[out length];
+    RMLog( @"Remote: Delta image %d", frame.length );
 
     if ( benchmark )
         RMLog( @"== %f", [NSDate timeIntervalSinceReferenceDate]-start );
@@ -369,7 +376,7 @@ static int skipEcho, pending;
         });
 }
 
-static UITouchesEvent *event;
+static UITouchesEvent *realEvent;
 
 + (void)processEvents {
     FILE *eventStream = fdopen(connectionSocket, "r");
@@ -385,6 +392,13 @@ static UITouchesEvent *event;
             static UITextAutocorrectionType saveAuto;
             static UITouch *currentTouch2;
             static UIView *currentTarget;
+
+            UITouchesEvent *event = realEvent;
+            if ( !event ) {
+                event = [[objc_getClass("UITouchesEvent") alloc] _init];
+                static char aPointer[1000];
+                [event _setHIDEvent:(__IOHIDEvent *)aPointer];
+            }
 
             switch ( rpevent.phase ) {
 
@@ -420,6 +434,11 @@ static UITouchesEvent *event;
                             currentTarget = found;
                     }
 
+//                    NSLog( @"! %@", NSStringFromCGPoint( location ) );
+//                    location = [[[UIApplication sharedApplication] windows][0].rootViewController.view
+//                                convertPoint:location toView:currentTarget.window];
+//                    NSLog( @"! %@", NSStringFromCGPoint( location ) );
+
                     RMLog( @"Target selected: %@", currentTarget );
                     if ( [currentTarget respondsToSelector:@selector(setAutocorrectionType:)] ) {
                         UITextField *textField = (UITextField *)currentTarget;
@@ -447,10 +466,6 @@ static UITouchesEvent *event;
 
                     currentTouches = [NSSet setWithObjects:currentTouch, currentTouch2, nil];
 
-                    //if ( !event )
-                    //    event = [[UIApplication sharedApplication] valueForKey:@"_touchesEvent"];
-                    if ( !event )
-                        event = [[objc_getClass("UITouchesEvent") alloc] _init];
                     [event _clearTouches];
                     [event _addTouch:currentTouch forDelayedDelivery:NO];
                     if ( currentTouch2 )
@@ -544,7 +559,7 @@ static UITouchesEvent *event;
     NSSet *touches = anEvent.allTouches;
 
     if ( [anEvent isKindOfClass:objc_getClass("UITouchesEvent")] ) {
-        event = (UITouchesEvent *)anEvent;
+        realEvent = (UITouchesEvent *)anEvent;
     //    if ( !currentTouch )
             currentTouch = [touches anyObject];
     }

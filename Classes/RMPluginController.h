@@ -8,7 +8,12 @@
 
 #import <Cocoa/Cocoa.h>
 
-@interface RMPluginController : NSObject
-
+@interface RMPluginController : NSObject <NSApplicationDelegate>
+@property IBOutlet NSMenuItem *remoteMenu;
+- (IBAction)patch:(NSMenuItem *)sender;
+- (IBAction)unpatch:(NSMenuItem *)sender;
+- (void)runScript:(NSString *)script;
+- (NSString *)workspacePath;
 @end
 
+extern RMPluginController *remotePlugin;

@@ -13,11 +13,11 @@
 
 @interface RMWindowController : NSWindowController
 
-@property (nonatomic) IBOutlet NSMenu *replayMenu;
 @property (nonatomic) RMDeviceController *device;
 
 + (NSModalResponse)error:(NSString *)msg, ...;
-- (NSArray *)serverAddresses;
++ (NSArray *)serverAddresses;
++ (void)startServer;
 
 - (void)replayMacro:(NSString *)name;
 - (void)logSet:(NSString *)macroHTML;
@@ -31,3 +31,4 @@
 
 @end
 
+extern RMWindowController *lastRMWindowController;

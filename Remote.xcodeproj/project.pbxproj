@@ -182,7 +182,7 @@
 		089C1669FE841209C02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0510;
+				LastUpgradeCheck = 0820;
 			};
 			buildConfigurationList = 1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Remote" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -252,7 +252,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "rm -rf /var/folders/nh/*/*/com.apple.DeveloperTools/*/Xcode/*/Xcode/SharedPrecompiledHeaders/RemoteBundle-Prefix-*/RemoteBundle-Prefix.pch.pch\ncd RemoteBundle && rm -rf build &&\nxcodebuild -sdk iphonesimulator -config Debug &&\nrm -rf \"$INSTALL_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"/SimBundle.loader &&\ncp -r build/Debug-iphonesimulator/RemoteBundle.loader \"$INSTALL_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"/SimBundle.loader\n/usr/bin/codesign --force --sign \"-\" --timestamp=none \"$INSTALL_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"/SimBundle.loader &&\nxcodebuild -sdk iphoneos -config Debug &&\nrm -rf \"$INSTALL_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"/DeviceBundle.loader &&\ncp -r build/Debug-iphoneos/RemoteBundle.loader \"$INSTALL_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"/DeviceBundle.loader";
-			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -289,6 +288,7 @@
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = Classes;
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "/Library/Application Support/Developer/Shared/Xcode/Plug-ins";
 				LD_RUNPATH_SEARCH_PATHS = /Developer;
@@ -296,6 +296,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.johnholdsworth.Remote;
 				PRODUCT_NAME = Remote;
 				STRIP_INSTALLED_PRODUCT = NO;
 				WRAPPER_EXTENSION = xcplugin;
@@ -305,12 +306,29 @@
 		1DEB913F08733D840010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CURRENT_PROJECT_VERSION = 3.5;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = DEBUG;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_PREPROCESSOR_DEFINITIONS = "";
 				INSTALL_PATH = "$(HOME)/Library/Application Support/Developer/Shared/Xcode/Plug-ins";
