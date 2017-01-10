@@ -6,10 +6,12 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 
-#include <sys/sysctl.h>
+#import <sys/sysctl.h>
 #import <netinet/tcp.h>
 #import <sys/socket.h>
 #import <arpa/inet.h>
+#import <netdb.h>
+#import <zlib.h>
 
 #ifndef REMOTE_PORT
 #define INJECTION_PORT 31442
@@ -20,6 +22,7 @@
 
 #define REMOTE_APPNAME "Remote"
 #define REMOTE_MINDIFF (3*sizeof(rmencoded_t))
+#define REMOTE_COMPRESSED_OFFSET 0x40000000
 
 #ifdef DEBUG
 #define RMLog NSLog
@@ -45,6 +48,10 @@ typedef NS_ENUM(int, RMTouchPhase) {
 
 #define RMMAX_TOUCHES 2
 
+struct _rmcompress {
+    unsigned bytes; unsigned char data[1];
+};
+
 struct _rmevent {
     RMTouchPhase phase;
     union {
@@ -53,9 +60,15 @@ struct _rmevent {
 };
 
 struct _rmdevice {
-    char machine[24];
-    float scale;
-    int isIPad;
+    char version;
+    //struct _rminfo {
+        char machine[24];
+        char appname[24];
+        char appvers[24];
+        char hostname[24];
+        float scale;
+        int isIPad;
+    //};
 };
 
 struct _rmframe {
@@ -238,51 +251,107 @@ static NSSet *currentTouches;
 
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
 
-static struct _rmdevice device;
-static int connectionSocket;
-static Class UIWindowLayer;
-static NSArray *screens;
-
 #ifdef REMOTEPLUGIN_SERVERIPS
 + (void)load {
     [self performSelectorInBackground:@selector(startCapture:) withObject:@REMOTEPLUGIN_SERVERIPS];
 }
 #endif
 
-+ (void)startCapture:(NSString *)addrs {
++ (BOOL)startCapture:(NSString *)addrs {
 #if TARGET_IPHONE_SIMULATOR
     addrs = @"127.0.0.1";
 #endif
-    UIWindowLayer = objc_getClass("UIWindowLayer");
-    for ( NSString *addr in [addrs componentsSeparatedByString:@" "] )
-        if ( (connectionSocket = [self connectTo:[addr UTF8String]]) )
-            break;
+    for ( NSString *addr in [addrs componentsSeparatedByString:@" "] ) {
+        NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
+        NSString *inaddr = parts[0];
+        in_port_t port = REMOTE_PORT;
+        if ( parts.count > 1 )
+            port = (in_port_t)parts[1].intValue;
+        int remoteSocket = [self connectIPV4:[inaddr UTF8String] port:port];
+        if ( remoteSocket ) {
+            NSLog( @"RemoteCapture: Connected." );
+            [self runCaptureOnSocket:remoteSocket];
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
 
-    if ( !connectionSocket )
-        return;
-    else
-        NSLog( @"RemoteCapture: Connected." );
++ (int)connectIPV4:(const char *)ipAddress port:(in_port_t)port {
+    static struct sockaddr_in remoteAddr;
+
+    remoteAddr.sin_len = sizeof remoteAddr;
+    remoteAddr.sin_family = AF_INET;
+    remoteAddr.sin_port = htons(port);
+
+    if ( isdigit( ipAddress[0] ) )
+        inet_aton( ipAddress, &remoteAddr.sin_addr );
+    else {
+        struct hostent *ent = gethostbyname2(ipAddress, remoteAddr.sin_family);
+        if ( ent )
+            memcpy( &remoteAddr.sin_addr, ent->h_addr_list[0], sizeof remoteAddr.sin_addr );
+        else {
+            NSLog( @"RemoteCapture: Could not look up host '%s'", ipAddress );
+            return 0;
+        }
+    }
+
+    NSLog( @"RemoteCapture: %s attempting connection to: %s:%d", REMOTE_APPNAME, ipAddress, port );
+    return [self connectAddr:(struct sockaddr *)&remoteAddr];
+}
+
++ (int)connectAddr:(struct sockaddr *)remoteAddr {
+    int remoteSocket, optval = 1;
+    if ( (remoteSocket = socket(remoteAddr->sa_family, SOCK_STREAM, 0)) < 0 )
+        NSLog( @"RemoteCapture: %s: Could not open socket for injection: %s", REMOTE_APPNAME, strerror( errno ) );
+    else if ( setsockopt( remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0 )
+        NSLog( @"RemoteCapture: %s: Could not set TCP_NODELAY: %s", REMOTE_APPNAME, strerror( errno ) );
+    else if ( connect( remoteSocket, remoteAddr, remoteAddr->sa_len ) >= 0 )
+        return remoteSocket;
+
+    NSLog( @"RemoteCapture: %s: Could not connect: %s", REMOTE_APPNAME, strerror( errno ) );
+    close( remoteSocket );
+    return 0;
+}
+
+static NSArray<UIScreen *> *screens;
+static struct _rmdevice device;
+static int connectionSocket;
+static Class UIWindowLayer;
+
++ (void)runCaptureOnSocket:(int)remoteSocket {
+    connectionSocket = remoteSocket;
 
     while ( !(screens = [UIScreen screens]).count )
         [NSThread sleepForTimeInterval:.5];
 
-#if 1
-    method_exchangeImplementations(class_getInstanceMethod(objc_getClass("CALayer"), @selector(_copyRenderLayer:layerFlags:commitFlags:)),
-                                   class_getInstanceMethod([NSObject class], @selector(in_copyRenderLayer:layerFlags:commitFlags:)));
+    if ( !UIWindowLayer ) {
+        UIWindowLayer = objc_getClass("UIWindowLayer");
+#if 01
+        method_exchangeImplementations(class_getInstanceMethod(objc_getClass("CALayer"), @selector(_copyRenderLayer:layerFlags:commitFlags:)),
+                                       class_getInstanceMethod([NSObject class], @selector(in_copyRenderLayer:layerFlags:commitFlags:)));
 #else
-    method_exchangeImplementations(class_getInstanceMethod(objc_getClass("CALayer"), @selector(_didCommitLayer:)),
-                                   class_getInstanceMethod([NSObject class], @selector(in_didCommitLayer:)));
+        method_exchangeImplementations(class_getInstanceMethod(objc_getClass("CALayer"), @selector(_didCommitLayer:)),
+                                       class_getInstanceMethod([NSObject class], @selector(in_didCommitLayer:)));
 #endif
 
-    method_exchangeImplementations(class_getInstanceMethod([UIApplication class], @selector(sendEvent:)),
-                                   class_getInstanceMethod([UIApplication class], @selector(in_sendEvent:)));
+        method_exchangeImplementations(class_getInstanceMethod([UIApplication class], @selector(sendEvent:)),
+                                       class_getInstanceMethod([UIApplication class], @selector(in_sendEvent:)));
+    }
+
+    device.version = 1;
 
     size_t size = sizeof device.machine;
     sysctlbyname("hw.machine", device.machine, &size, NULL, 0);
     device.machine[size] = '\000';
 
-    UIScreen *screen = screens[0];
-    device.scale = [screen scale];
+    NSDictionary *infoDict = [NSBundle mainBundle].infoDictionary;
+    strncpy(device.appname, [infoDict[@"CFBundleIdentifier"] UTF8String]?:"", sizeof device.appname);
+    strncpy(device.appvers, [infoDict[@"CFBundleShortVersionString"] UTF8String]?:"", sizeof device.appvers);
+
+    gethostname(device.hostname, sizeof device.hostname);
+
+    device.scale = [screens[0] scale];
     device.isIPad = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad;
 
     if ( write( connectionSocket, &device, sizeof device ) != sizeof device )
@@ -290,28 +359,6 @@ static NSArray *screens;
 
     [self performSelectorInBackground:@selector(processEvents) withObject:nil];
     [self performSelectorOnMainThread:@selector(capture) withObject:nil waitUntilDone:NO];
-}
-
-+ (int)connectTo:(const char *)ipAddress {
-    static struct sockaddr_in loaderAddr;
-
-    loaderAddr.sin_family = AF_INET;
-    inet_aton( ipAddress, &loaderAddr.sin_addr );
-    loaderAddr.sin_port = htons(REMOTE_PORT);
-
-    NSLog( @"RemoteCapture: %s attempting connection to: %s:%d", REMOTE_APPNAME, ipAddress, REMOTE_PORT );
-
-    int loaderSocket, optval = 1;
-    if ( (loaderSocket = socket(loaderAddr.sin_family, SOCK_STREAM, 0)) < 0 )
-        NSLog( @"RemoteCapture: %s: Could not open socket for injection: %s", REMOTE_APPNAME, strerror( errno ) );
-    else if ( setsockopt( loaderSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0 )
-        NSLog( @"RemoteCapture: %s: Could not set TCP_NODELAY: %s", REMOTE_APPNAME, strerror( errno ) );
-    else if ( connect( loaderSocket, (struct sockaddr *)&loaderAddr, sizeof loaderAddr ) >= 0 )
-        return loaderSocket;
-
-    NSLog( @"RemoteCapture: %s: Could not connect: %s", REMOTE_APPNAME, strerror( errno ) );
-    close( loaderSocket );
-    return 0;
 }
 
 static dispatch_queue_t writeQueue;
@@ -358,8 +405,18 @@ static int skipEcho, pending;
 
     NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
     NSData *out = [buffer subtractAndEncode:prevbuff];
-    frame.length = (unsigned)[out length];
-    RMLog( @"Remote: Delta image %d", frame.length );
+    int length = frame.length = (unsigned)out.length;
+
+#ifdef REMOTE_COMPRESSION
+    struct _rmcompress *buff = malloc( sizeof buff->bytes+out.length+100 );
+    uLongf clen = buff->bytes = (unsigned)out.length;
+    if ( compress(buff->data, &clen,
+                  (const Bytef *)out.bytes, buff->bytes) == Z_OK && clen < out.length ) {
+        out = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
+        frame.length = REMOTE_COMPRESSED_OFFSET + (int)out.length;
+    }
+    RMLog( @"Remote: Delta image %d/%d", (int)out.length, length );
+#endif
 
     if ( benchmark )
         RMLog( @"== %f", [NSDate timeIntervalSinceReferenceDate]-start );
@@ -371,7 +428,7 @@ static int skipEcho, pending;
         dispatch_async(writeQueue, ^{
             if ( write(connectionSocket, &frame, sizeof frame) != sizeof frame )
                 NSLog( @"RemoteCapture: Could not write bounds" );
-            else if ( write(connectionSocket, [out bytes], frame.length) != frame.length )
+            else if ( write(connectionSocket, out.bytes, out.length) != out.length )
                 NSLog( @"RemoteCapture: Could not write out" );
         });
 }
@@ -530,6 +587,11 @@ static UITouchesEvent *realEvent;
     
     NSLog( @"RemoteCapture: processEvents exits" );
     fclose( eventStream );
+    [self shutdown];
+}
+
++ (void)shutdown {
+    close( connectionSocket );
     connectionSocket = 0;
 }
 
@@ -565,7 +627,7 @@ static UITouchesEvent *realEvent;
     }
 
 #if 0
-    RMLog( @"%@", event );
+    RMLog( @"%@", anEvent );
     for ( UITouch *t in touches )
         RMLog( @"Gestures: %@", t.gestureRecognizers );
 #endif

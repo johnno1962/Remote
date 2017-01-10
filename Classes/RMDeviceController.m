@@ -13,7 +13,6 @@
 #import <zlib.h>
 
 #define COMPRESS_SNAPSHOT
-struct _rmcompress { uLongf bytes; Bytef data[1]; };
 
 @implementation  RemoteCapture(Recover)
 
@@ -76,6 +75,10 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
 
     NSString *deviceString = [NSString stringWithFormat:@"<div>Hardware %s</div>", device.machine];
     [(NSObject *)owner performSelectorOnMainThread:@selector(logSet:) withObject:deviceString waitUntilDone:NO];
+    deviceString = [NSString stringWithFormat:@"Host: %@", [NSString stringWithUTF8String:device.hostname]];
+    [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:) withObject:deviceString waitUntilDone:NO];
+    deviceString = [NSString stringWithFormat:@"App: %s %s", device.appname, device.appvers];
+    [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:) withObject:deviceString waitUntilDone:NO];
 
     // loop through frames
     struct _rmframe newFrame;
@@ -118,8 +121,8 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
                 [owner resize:NSMakeSize(newFrame.width, newFrame.height)];
             });
 
-            NSString *deviceString = [NSString stringWithFormat:@"Device w:%g h:%g iscale:%g scale:%g",
-                                      newFrame.width, newFrame.height, newFrame.imageScale, device.scale];
+            deviceString = [NSString stringWithFormat:@"Device w:%g h:%g iscale:%g scale:%g",
+                            newFrame.width, newFrame.height, newFrame.imageScale, device.scale];
             [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
                                                 withObject:deviceString waitUntilDone:NO];
 
@@ -133,6 +136,11 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
         frame = newFrame;
 
         //NSLog( @"Incoming bytes from client: %u", frame.length );
+
+        BOOL isCompressed = frame.length >= REMOTE_COMPRESSED_OFFSET;
+        if ( isCompressed )
+            frame.length -= REMOTE_COMPRESSED_OFFSET;
+
         if ( tmpsize < frame.length ) {
             free( tmp );
             tmp = malloc(frame.length);
@@ -142,21 +150,39 @@ struct _rmcompress { uLongf bytes; Bytef data[1]; };
         if ( fread(tmp, 1, frame.length, renderStream) != frame.length )
             break;
 
+        if ( isCompressed ) {
+            struct _rmcompress *buff = (struct _rmcompress *)tmp;
+            uLong bytes = buff->bytes;
+            void *buff2 = malloc(bytes);
+
+            if ( uncompress(buff2, &bytes, buff->data, frame.length-sizeof buff->bytes) != Z_OK || bytes != buff->bytes ) {
+                NSLog( @"RemoteCapture: Uncompress problem" );
+                break;
+            }
+
+            free( tmp );
+            tmp = buff2;
+            tmpsize = (int)buff->bytes;
+        }
+
         // alternate buffers
         RemoteCapture *buffer = buffers[frameno++%2];
         RemoteCapture *prevbuff = buffers[frameno%2];
-        
+
         [buffer recover:tmp against:prevbuff];
         currentBuffer = buffer;
 
         [owner updateImage:[currentBuffer cgImage]];
     }
 
-close:
     NSLog( @"renderService exits" );
     fclose( renderStream );
     owner.device = nil;
     free(tmp);
+}
+
+- (void)shutdown {
+    close( clientSocket );
 }
 
 - (NSString *)snapshot:(RemoteCapture *)reference withFormat:(NSString *)format {
@@ -184,13 +210,13 @@ close:
     NSData *out = [reference subtractAndEncode:nil];
 
 #ifdef COMPRESS_SNAPSHOT
-    struct _rmcompress *buff = malloc( sizeof buff->bytes+[out length]+100 );
-    uLongf clen = buff->bytes = [out length];
+    struct _rmcompress *buff = malloc( sizeof buff->bytes+out.length+100 );
+    uLongf clen = buff->bytes = (unsigned)out.length;
     if ( compress(buff->data, &clen,
-                  (const Bytef *)[out bytes], buff->bytes) != Z_OK )
+                  (const Bytef *)out.bytes, buff->bytes) != Z_OK )
         NSLog( @"RemoteCapture: Compression problem" );
 
-    data = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
+    data = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes + clen freeWhenDone:YES];
 #endif
 
     NSString *enc64 = [data base64EncodedStringWithOptions:0];
@@ -201,31 +227,39 @@ close:
     NSData *encData = [[NSData alloc] initWithBase64EncodedString:enc64 options:0];
 
 #ifdef COMPRESS_SNAPSHOT
-    struct _rmcompress *buff = (struct _rmcompress *)[encData bytes];
+    struct _rmcompress *buff = (struct _rmcompress *)encData.bytes;
     uLong bytes = buff->bytes;
     void *buff2 = malloc(bytes);
 
-    if ( uncompress(buff2, &bytes, buff->data, [encData length]-sizeof buff->bytes) != Z_OK )
+    Bytef *backwardCompatibility = buff->data + sizeof(uLongf) - sizeof buff->bytes;
+    if ( uncompress(buff2, &bytes, buff->data, encData.length - sizeof buff->bytes) != Z_OK &&
+        uncompress(buff2, &bytes, backwardCompatibility, encData.length - sizeof buff->bytes) != Z_OK )
         NSLog( @"RemoteCapture: Uncompress problem" );
 
     encData = [NSData dataWithBytesNoCopy:buff2 length:bytes freeWhenDone:YES];
 #endif
 
     RemoteCapture *reference = [[RemoteCapture alloc] initFrame:&frame];
-    [reference recover:[encData bytes] against:[[RemoteCapture alloc] initFrame:&frame]];
+    [reference recover:encData.bytes against:[[RemoteCapture alloc] initFrame:&frame]];
     return reference;
 }
 
 - (NSImage *)recoverImage:(NSString *)enc64 {
-    CGImageRef img = [[self recoverBuffer:enc64] cgImage];
+    RemoteCapture *snapshot = [self recoverBuffer:enc64];
+    CGImageRef current = [currentBuffer cgImage];
+    CGContextScaleCTM(snapshot->cg, 1., -1.);
+    CGContextSetBlendMode(snapshot->cg, kCGBlendModeDifference);
+    CGContextDrawImage(snapshot->cg, CGRectMake(0., -frame.height, frame.width, frame.height), current);
+    CGImageRef img = [snapshot cgImage];
     NSImage *image = [[NSImage alloc] initWithCGImage:img size:NSMakeSize(frame.width, frame.height)];
+    CGImageRelease(current);
     CGImageRelease(img);
     return image;
 }
 
 - (unsigned)differenceAgainst:(RemoteCapture *)snapshot {
     NSData *out = [currentBuffer subtractAndEncode:snapshot];
-    return (unsigned)[out length]-REMOTE_MINDIFF;
+    return (unsigned)out.length-REMOTE_MINDIFF;
 }
 
 - (void)writeEvent:(const struct _rmevent *)event {

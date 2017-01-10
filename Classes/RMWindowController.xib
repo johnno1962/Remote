@@ -218,7 +218,7 @@
                 <outlet property="parentWindow" destination="sFo-vE-eKG" id="Ujz-32-qUQ"/>
             </connections>
         </drawer>
-        <window title="Snapshot Image" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" visibleAtLaunch="NO" animationBehavior="default" id="ufl-ee-ZV8">
+        <window title="Difference against Snapshot" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" visibleAtLaunch="NO" animationBehavior="default" id="ufl-ee-ZV8">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="313" y="488" width="217" height="301"/>

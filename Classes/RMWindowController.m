@@ -94,8 +94,9 @@ static int serverSocket;
             if ( setsockopt( clientSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0 )
                 [self error:@"Set TCP_NODELAY %s", strerror(errno)];
 
-            NSString *ipAddr = [NSString stringWithUTF8String:inet_ntoa( clientAddr.sin_addr )];
-            NSLog( @"RMWindowController: Connection from %@:%d", ipAddr, ntohs( clientAddr.sin_port ) );
+            NSString *ipAddr = [NSString stringWithFormat:@"%s",//:%d", // can be unique to port
+                                inet_ntoa( clientAddr.sin_addr ), ntohs( clientAddr.sin_port )];
+            NSLog( @"RMWindowController: Connection from %@", ipAddr );
 
             dispatch_sync( dispatch_get_main_queue(), ^{
                 lastRMWindowController = connectionWindows[ipAddr];
@@ -206,6 +207,11 @@ static CGFloat windowTitleHeight = 22.;
     if ( aspect )
         frameSize.height = frameSize.width*aspect+windowTitleHeight;
     return frameSize;
+}
+
+- (void)windowWillClose:(NSNotification *)notification {
+    if ( notification.object == self.window )
+        [self.device shutdown];
 }
 
 - (void)logSet:(NSString *)macroHTML {

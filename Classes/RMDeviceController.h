@@ -12,7 +12,7 @@
 @class RMDeviceController;
 @class RMImageView;
 
-@protocol RMDeviceDelegate
+@protocol RMDeviceDelegate <NSObject>
 
 @property (nonatomic) RMDeviceController *device;
 
@@ -38,6 +38,7 @@
 
 - (void)sendEvent:(NSEvent *)theEvent phase:(RMTouchPhase)phase;
 - (void)writeEvent:(const struct _rmevent *)event;
+- (void)shutdown;
 
 - (NSString *)snapshot:(RemoteCapture *)reference withFormat:(NSString *)format;
 - (unsigned)differenceAgainst:(RemoteCapture *)snapshot;
