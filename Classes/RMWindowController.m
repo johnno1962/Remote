@@ -39,6 +39,7 @@
 
 RMWindowController *lastRMWindowController;
 static NSMutableDictionary<NSString *,RMWindowController *> *connectionWindows;
+static NSMenuItem *macroMenu;
 static int serverSocket;
 
 @implementation RMWindowController
@@ -54,8 +55,9 @@ static int serverSocket;
                 informativeTextWithFormat:@"%@", msg] runModal];
 }
 
-+ (void)startServer {
++ (void)startServer:(NSMenuItem *)mainMacroMenu {
     connectionWindows = [NSMutableDictionary new];
+    macroMenu = mainMacroMenu;
 
     struct sockaddr_in serverAddr;
 
@@ -159,6 +161,10 @@ static int serverSocket;
 
 - (RMImageView *)imageView {
     return imageView;
+}
+
+- (NSMenuItem *)macroMenu {
+    return macroMenu;
 }
 
 - (void)updateImage:(CGImageRef)img {

@@ -9,8 +9,6 @@
 #import "RMPluginController.h"
 #import "RMWindowController.h"
 
-RMPluginController *remotePlugin;
-
 @interface INPluginMenuController : NSObject
 + (BOOL)loadRemote:(NSString *)resourcePath;
 + (BOOL)loadBundleForPlugin:(NSString *)resourcePath;
@@ -46,6 +44,7 @@ typedef NS_ENUM(int, DBGState) {
 
     if ([currentApplicationName isEqual:@"Xcode"])
         dispatch_once(&onceToken, ^{
+            static RMPluginController *remotePlugin;
             remotePlugin = [[self alloc] init];
             dispatch_async( dispatch_get_main_queue(), ^{
                 [remotePlugin applicationDidFinishLaunching:nil];
@@ -81,8 +80,7 @@ typedef NS_ENUM(int, DBGState) {
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        [[RMWindowController class] startServer];
-        remotePlugin = self;
+        [[RMWindowController class] startServer:self.remoteMenu];
     });
 }
 

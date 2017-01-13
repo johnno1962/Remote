@@ -95,7 +95,7 @@
     for ( NSString *name in macros )
         [loader insertItemWithTitle:name atIndex:1];
 
-    NSMenu *replayMenu = remotePlugin.remoteMenu.submenu;
+    NSMenu *replayMenu = owner.macroMenu.submenu;
     id target = [[replayMenu itemArray][0] target];
     while ( replayMenu.itemArray.count > 3 )
         [replayMenu removeItemAtIndex:1];

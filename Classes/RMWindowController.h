@@ -16,8 +16,8 @@
 @property (nonatomic) RMDeviceController *device;
 
 + (NSModalResponse)error:(NSString *)msg, ...;
++ (void)startServer:(NSMenuItem *)macroMenu;
 + (NSArray *)serverAddresses;
-+ (void)startServer;
 
 - (void)replayMacro:(NSString *)name;
 - (void)logSet:(NSString *)macroHTML;
@@ -25,6 +25,7 @@
 
 - (NSImage *)recoverImage:(NSString *)enc64;
 - (NSString *)takeSnapshot;
+- (NSMenuItem *)macroMenu;
 
 - (void)cancelReplay;
 - (void)reset;

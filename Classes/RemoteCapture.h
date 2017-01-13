@@ -22,7 +22,7 @@
 
 #define REMOTE_APPNAME "Remote"
 #define REMOTE_MINDIFF (3*sizeof(rmencoded_t))
-#define REMOTE_COMPRESSED_OFFSET 0x40000000
+#define REMOTE_COMPRESSED_OFFSET 1000000000
 
 #ifdef DEBUG
 #define RMLog NSLog
@@ -63,9 +63,9 @@ struct _rmdevice {
     char version;
     //struct _rminfo {
         char machine[24];
-        char appname[24];
+        char appname[64];
         char appvers[24];
-        char hostname[24];
+        char hostname[64];
         float scale;
         int isIPad;
     //};
@@ -85,6 +85,11 @@ struct _rmframe {
     CGContextRef cg;
 }
 
+@end
+
+@protocol RemoteDelegate <NSObject>
+@required
+- (void)remoteConnected:(BOOL)status;
 @end
 
 #if (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && defined(DEBUG) || \
@@ -251,6 +256,8 @@ static NSSet *currentTouches;
 
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
 
+static id<RemoteDelegate> remoteDelegate;
+
 #ifdef REMOTEPLUGIN_SERVERIPS
 + (void)load {
     [self performSelectorInBackground:@selector(startCapture:) withObject:@REMOTEPLUGIN_SERVERIPS];
@@ -315,6 +322,7 @@ static NSSet *currentTouches;
 }
 
 static NSArray<UIScreen *> *screens;
+static dispatch_queue_t writeQueue;
 static struct _rmdevice device;
 static int connectionSocket;
 static Class UIWindowLayer;
@@ -341,15 +349,15 @@ static Class UIWindowLayer;
 
     device.version = 1;
 
-    size_t size = sizeof device.machine;
+    size_t size = sizeof device.machine-1;
     sysctlbyname("hw.machine", device.machine, &size, NULL, 0);
     device.machine[size] = '\000';
 
     NSDictionary *infoDict = [NSBundle mainBundle].infoDictionary;
-    strncpy(device.appname, [infoDict[@"CFBundleIdentifier"] UTF8String]?:"", sizeof device.appname);
-    strncpy(device.appvers, [infoDict[@"CFBundleShortVersionString"] UTF8String]?:"", sizeof device.appvers);
+    strncpy(device.appname, [infoDict[@"CFBundleIdentifier"] UTF8String]?:"", sizeof device.appname-1);
+    strncpy(device.appvers, [infoDict[@"CFBundleShortVersionString"] UTF8String]?:"", sizeof device.appvers-1);
 
-    gethostname(device.hostname, sizeof device.hostname);
+    gethostname(device.hostname, sizeof device.hostname-1);
 
     device.scale = [screens[0] scale];
     device.isIPad = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad;
@@ -357,19 +365,21 @@ static Class UIWindowLayer;
     if ( write( connectionSocket, &device, sizeof device ) != sizeof device )
         NSLog( @"RemoteCapture: Could not write device info" );
 
+    if ( !writeQueue )
+        writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
+
+    [remoteDelegate remoteConnected:TRUE];
     [self performSelectorInBackground:@selector(processEvents) withObject:nil];
     [self performSelectorOnMainThread:@selector(capture) withObject:nil waitUntilDone:NO];
 }
 
-static dispatch_queue_t writeQueue;
 static int skipEcho, pending;
 
 + (void)capture {
     UIScreen *screen = screens[0];
     CGRect bounds = screen.bounds;
     CGFloat imageScale = device.isIPad || device.scale == 3. ? 1. : screen.scale;
-
-    struct _rmframe frame = { bounds.size.width, bounds.size.height, imageScale, 0 };
+    __block struct _rmframe frame = { bounds.size.width, bounds.size.height, imageScale, 0 };
 
     static NSArray *buffers;
     static CGSize size;
@@ -403,34 +413,27 @@ static int skipEcho, pending;
     pending = 0;
     skipEcho = 2;
 
-    NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
-    NSData *out = [buffer subtractAndEncode:prevbuff];
-    int length = frame.length = (unsigned)out.length;
+    dispatch_async(writeQueue, ^{
+        NSData *out = [buffer subtractAndEncode:prevbuff];
+        frame.length = (unsigned)out.length;
+        if ( frame.length == REMOTE_MINDIFF )
+            return;
 
 #ifdef REMOTE_COMPRESSION
-    struct _rmcompress *buff = malloc( sizeof buff->bytes+out.length+100 );
-    uLongf clen = buff->bytes = (unsigned)out.length;
-    if ( compress(buff->data, &clen,
-                  (const Bytef *)out.bytes, buff->bytes) == Z_OK && clen < out.length ) {
-        out = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
-        frame.length = REMOTE_COMPRESSED_OFFSET + (int)out.length;
-    }
-    RMLog( @"Remote: Delta image %d/%d", (int)out.length, length );
+        struct _rmcompress *buff = malloc( sizeof buff->bytes+out.length+100 );
+        uLongf clen = buff->bytes = (unsigned)out.length;
+        if ( compress2(buff->data, &clen,
+                       (const Bytef *)out.bytes, buff->bytes, Z_BEST_SPEED) == Z_OK && clen < out.length ) {
+            out = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
+            RMLog( @"Remote: Delta image %d/%d %.1f%%", (int)out.length, frame.length, 100.*out.length/frame.length );
+            frame.length = REMOTE_COMPRESSED_OFFSET + (int)out.length;
+        }
 #endif
-
-    if ( benchmark )
-        RMLog( @"== %f", [NSDate timeIntervalSinceReferenceDate]-start );
-
-    if ( !writeQueue )
-        writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
-
-    if ( frame.length != REMOTE_MINDIFF )
-        dispatch_async(writeQueue, ^{
-            if ( write(connectionSocket, &frame, sizeof frame) != sizeof frame )
-                NSLog( @"RemoteCapture: Could not write bounds" );
-            else if ( write(connectionSocket, out.bytes, out.length) != out.length )
-                NSLog( @"RemoteCapture: Could not write out" );
-        });
+        if ( write(connectionSocket, &frame, sizeof frame) != sizeof frame )
+            NSLog( @"RemoteCapture: Could not write bounds" );
+        else if ( write(connectionSocket, out.bytes, out.length) != out.length )
+            NSLog( @"RemoteCapture: Could not write out" );
+    });
 }
 
 static UITouchesEvent *realEvent;
@@ -490,11 +493,6 @@ static UITouchesEvent *realEvent;
                         if ( found )
                             currentTarget = found;
                     }
-
-//                    NSLog( @"! %@", NSStringFromCGPoint( location ) );
-//                    location = [[[UIApplication sharedApplication] windows][0].rootViewController.view
-//                                convertPoint:location toView:currentTarget.window];
-//                    NSLog( @"! %@", NSStringFromCGPoint( location ) );
 
                     RMLog( @"Target selected: %@", currentTarget );
                     if ( [currentTarget respondsToSelector:@selector(setAutocorrectionType:)] ) {
@@ -591,8 +589,18 @@ static UITouchesEvent *realEvent;
 }
 
 + (void)shutdown {
-    close( connectionSocket );
-    connectionSocket = 0;
+    if ( connectionSocket ) {
+        [remoteDelegate remoteConnected:FALSE];
+        close( connectionSocket );
+        connectionSocket = 0;
+    }
+}
+
++ (void)capture0 {
+    if ( !pending++ )
+        dispatch_async(writeQueue, ^{
+            [RemoteCapture performSelectorOnMainThread:@selector(capture) withObject:nil waitUntilDone:NO];
+        });
 }
 
 @end
@@ -601,15 +609,15 @@ static UITouchesEvent *realEvent;
 
 - (void *)in_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2 {
     void *out = [self in_copyRenderLayer:a0 layerFlags:a1 commitFlags:a2];
-    if ( connectionSocket && [self isKindOfClass:UIWindowLayer] && --skipEcho<0 && !pending++ )
-        [RemoteCapture performSelectorOnMainThread:@selector(capture) withObject:nil waitUntilDone:NO];
-    return  out;
+    if ( connectionSocket && [self isKindOfClass:UIWindowLayer] && --skipEcho<0 )
+        [RemoteCapture performSelectorOnMainThread:@selector(capture0) withObject:nil waitUntilDone:NO];
+    return out;
 }
 
 - (void)in_didCommitLayer:(void *)a0 {
     [self in_didCommitLayer:a0];
-    if ( connectionSocket && [self isKindOfClass:UIWindowLayer] && --skipEcho<0 && !pending++ )
-        [RemoteCapture performSelectorOnMainThread:@selector(capture) withObject:nil waitUntilDone:NO];
+    if ( connectionSocket && [self isKindOfClass:UIWindowLayer] && --skipEcho<0 )
+        [RemoteCapture performSelectorOnMainThread:@selector(capture0) withObject:nil waitUntilDone:NO];
 }
 
 @end
@@ -640,8 +648,10 @@ static UITouchesEvent *realEvent;
         header.phase = (RMTouchPhase)touch.phase;
         header.x = loc.x;
         header.y = loc.y;
+        NSData *out = [NSData dataWithBytes:&header length:sizeof header];
         dispatch_async(writeQueue, ^{
-            write(connectionSocket, &header, sizeof header);
+            if ( write(connectionSocket, out.bytes, out.length) != out.length )
+                NSLog( @"RemoteCapture: Could not write event" );
         });
         header.length++;
     }

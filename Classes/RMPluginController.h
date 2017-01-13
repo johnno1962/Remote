@@ -15,5 +15,3 @@
 - (void)runScript:(NSString *)script;
 - (NSString *)workspacePath;
 @end
-
-extern RMPluginController *remotePlugin;
