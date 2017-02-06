@@ -16,7 +16,9 @@
 @property (nonatomic) RMDeviceController *device;
 
 + (NSModalResponse)error:(NSString *)msg, ...;
+
 + (void)startServer:(NSMenuItem *)macroMenu;
++ (void)startServer:(NSMenuItem *)macroMenu port:(in_port_t)port;
 + (NSArray *)serverAddresses;
 
 - (void)replayMacro:(NSString *)name;

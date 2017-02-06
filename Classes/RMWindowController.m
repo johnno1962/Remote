@@ -5,6 +5,8 @@
 //  Created by John Holdsworth on 20/12/2014.
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
+//  Repo: https://github.com/johnno1962/Remote
+//
 
 #import "RMWindowController.h"
 
@@ -56,6 +58,10 @@ static int serverSocket;
 }
 
 + (void)startServer:(NSMenuItem *)mainMacroMenu {
+    [self startServer:mainMacroMenu port:REMOTE_PORT];
+}
+
++ (void)startServer:(NSMenuItem *)mainMacroMenu port:(in_port_t)port {
     connectionWindows = [NSMutableDictionary new];
     macroMenu = mainMacroMenu;
 
@@ -63,7 +69,7 @@ static int serverSocket;
 
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(REMOTE_PORT);
+    serverAddr.sin_port = htons(port);
 
     int optval = 1;
     if ( (serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0 )

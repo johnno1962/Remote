@@ -108,7 +108,7 @@ typedef CFTypeRef __IOHIDEvent;
 @end
 
 @class __GSEvent;
-@class __CFDictionary;
+//@class __CFDictionary;
 
 @interface UITouchesEvent : UIEvent
 
@@ -151,7 +151,7 @@ typedef CFTypeRef __IOHIDEvent;
 - (void)_observeTouch:(id)a0 ;
 - (void)_removeTouchesForKey:(id)a0 ;
 - (void)_removeTouchesForWindow:(id)a0 ;
-- (__CFDictionary *)_coalescedTouchesForHidEvent:(__IOHIDEvent *)a0 ;
+- (NSDictionary *)_coalescedTouchesForHidEvent:(__IOHIDEvent *)a0 ;
 - (void)_removeTouch:(id)a0 fromGestureRecognizer:(id)a1 ;
 - (id)_touchesForGesture:(id)a0 withPhase:(long)a1 ;
 - (void)_moveTouchesFromView:(id)a0 toView:(id)a1 ;

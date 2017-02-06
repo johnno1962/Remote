@@ -5,6 +5,8 @@
 //  Created by John Holdsworth on 14/12/2014.
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
+//  Repo: https://github.com/johnno1962/Remote
+//
 
 #import <sys/sysctl.h>
 #import <netinet/tcp.h>
@@ -21,6 +23,7 @@
 #endif
 
 #define REMOTE_APPNAME "Remote"
+#define REMOTE_MAGIC -REMOTE_PORT*REMOTE_PORT
 #define REMOTE_MINDIFF (3*sizeof(rmencoded_t))
 #define REMOTE_COMPRESSED_OFFSET 1000000000
 
@@ -61,14 +64,14 @@ struct _rmevent {
 
 struct _rmdevice {
     char version;
-    //struct _rminfo {
-        char machine[24];
-        char appname[64];
-        char appvers[24];
-        char hostname[64];
-        float scale;
-        int isIPad;
-    //};
+    char machine[24];
+    char appname[64];
+    char appvers[24];
+    char hostname[63];
+    float scale;
+    int isIPad;
+    char expansion[64];
+    int magic;
 };
 
 struct _rmframe {
@@ -200,9 +203,7 @@ static NSSet *currentTouches;
     rmencoded_t *tmp = (rmencoded_t *)malloc(tmpsize*sizeof *tmp), *end = tmp + tmpsize;
 
     rmencoded_t *out = tmp, count = 0, expectedDiff = 0, check = 0;
-    for ( register rmpixel_t
-             *curr = buffer,
-             *prev = prevbuff ? prevbuff->buffer : NULL ;
+    for ( rmpixel_t *curr = buffer, *prev = prevbuff ? prevbuff->buffer : NULL ;
              curr < buffend ; check += *curr, curr++ ) {
         rmpixel_t ref = (prev ? *prev++ : 0), diff = *curr - ref - expectedDiff;
         if ( !diff && curr != buffer )
@@ -326,9 +327,11 @@ static dispatch_queue_t writeQueue;
 static struct _rmdevice device;
 static int connectionSocket;
 static Class UIWindowLayer;
+static CGSize bufferSize;
 
 + (void)runCaptureOnSocket:(int)remoteSocket {
     connectionSocket = remoteSocket;
+    bufferSize.width = 0.0;
 
     while ( !(screens = [UIScreen screens]).count )
         [NSThread sleepForTimeInterval:.5];
@@ -361,6 +364,7 @@ static Class UIWindowLayer;
 
     device.scale = [screens[0] scale];
     device.isIPad = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad;
+    device.magic = REMOTE_MAGIC;
 
     if ( write( connectionSocket, &device, sizeof device ) != sizeof device )
         NSLog( @"RemoteCapture: Could not write device info" );
@@ -379,17 +383,16 @@ static int skipEcho, pending;
     UIScreen *screen = screens[0];
     CGRect bounds = screen.bounds;
     CGFloat imageScale = device.isIPad || device.scale == 3. ? 1. : screen.scale;
-    __block struct _rmframe frame = { bounds.size.width, bounds.size.height, imageScale, 0 };
+    __block struct _rmframe frame = { (float)bounds.size.width, (float)bounds.size.height, (float)imageScale, 0 };
 
     static NSArray *buffers;
-    static CGSize size;
     static int frameno;
 
-    if ( size.width != frame.width || size.height != frame.height ) {
+    if ( bufferSize.width != frame.width || bufferSize.height != frame.height ) {
         buffers = nil;
         buffers = @[[[RemoteCapture alloc] initFrame:&frame],
                     [[RemoteCapture alloc] initFrame:&frame]];
-        size = bounds.size;
+        bufferSize = bounds.size;
         frameno = 0;
     }
 

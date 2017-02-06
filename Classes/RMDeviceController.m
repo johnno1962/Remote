@@ -5,6 +5,8 @@
 //  Created by John Holdsworth on 21/12/2014.
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
+//  Repo: https://github.com/johnno1962/Remote
+//
 
 #define REMOTE_IMPL
 #import "RMDeviceController.h"
@@ -72,6 +74,12 @@
 
     if( fread(&device, 1, sizeof device, renderStream) != sizeof device )
         NSLog( @"Could not read device info" );
+
+    if( device.magic != REMOTE_MAGIC ) {
+        NSLog( @"Non-matching RemoteCapture.h?" );
+        fclose( renderStream );
+        return;
+    }
 
     NSString *deviceString = [NSString stringWithFormat:@"<div>Hardware %s</div>", device.machine];
     [(NSObject *)owner performSelectorOnMainThread:@selector(logSet:) withObject:deviceString waitUntilDone:NO];
