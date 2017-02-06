@@ -23,7 +23,7 @@
 #endif
 
 #define REMOTE_APPNAME "Remote"
-#define REMOTE_MAGIC -REMOTE_PORT*REMOTE_PORT
+#define REMOTE_MAGIC -141414141
 #define REMOTE_MINDIFF (3*sizeof(rmencoded_t))
 #define REMOTE_COMPRESSED_OFFSET 1000000000
 
