@@ -1,8 +1,8 @@
 ## Remote - Control your iPhone from Xcode
 
 "Remote" is a plugin for Xcode that allows you to control an iPhone 
-from a window on your Mac during development. Originally created to avoid
-having to pick  up a device during testing you can record "macros" 
+from a window on your Mac during development. It was originally created to avoid
+having to pick  up a device during testing. You can record "macros" 
 of device touches and replay them. It will also compare the resulting screen
 output against a snapshot for end-to-end testing. The Macro log is an 
 editable WebView that can be modified at will. Finally, you can now
