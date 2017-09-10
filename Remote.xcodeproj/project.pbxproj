@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		7F2EB89C145057F200E97A87 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F2EB899145057EA00E97A87 /* AppKit.framework */; };
+		BB25264C1F65D1A400898347 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = BB25264B1F65D1A300898347 /* LICENSE */; };
 		BB5CF63A1912DCC50052E10B /* RMPluginController.m in Sources */ = {isa = PBXBuildFile; fileRef = BB5CF6391912DCC50052E10B /* RMPluginController.m */; };
 		BB61FC2A1A629AC300833642 /* QTKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB61FC291A629AC300833642 /* QTKit.framework */; };
 		BB82F0CD1913D15F0015AE7A /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = BB82F0CC1913D15F0015AE7A /* README.md */; };
@@ -42,6 +43,7 @@
 		7F2EB899145057EA00E97A87 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		8D5B49B6048680CD000E48DA /* Remote.xcplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Remote.xcplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D5B49B7048680CD000E48DA /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB25264B1F65D1A300898347 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		BB5CF6381912DCC50052E10B /* RMPluginController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMPluginController.h; sourceTree = "<group>"; };
 		BB5CF6391912DCC50052E10B /* RMPluginController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RMPluginController.m; sourceTree = "<group>"; };
 		BB61FC291A629AC300833642 /* QTKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QTKit.framework; path = System/Library/Frameworks/QTKit.framework; sourceTree = SDKROOT; };
@@ -84,6 +86,7 @@
 		089C166AFE841209C02AAC07 /* QuietXcode */ = {
 			isa = PBXGroup;
 			children = (
+				BB25264B1F65D1A300898347 /* LICENSE */,
 				BB82F0CC1913D15F0015AE7A /* README.md */,
 				BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */,
 				7F411B0C15FABAC6002F77B6 /* Classes */,
@@ -229,6 +232,7 @@
 				BBBD4F5B1A4AF534009969E1 /* RemoteHeaders.h in Resources */,
 				BBBD4F5F1A4AF5C6009969E1 /* unpatch.py in Resources */,
 				BBBD4F581A4AF4FA009969E1 /* iphone.png in Resources */,
+				BB25264C1F65D1A400898347 /* LICENSE in Resources */,
 				BBBD4F0B1A4AE1FE009969E1 /* RMWindowController.xib in Resources */,
 				BBBD4F591A4AF4FA009969E1 /* log.html in Resources */,
 				BB82F0CD1913D15F0015AE7A /* README.md in Resources */,
