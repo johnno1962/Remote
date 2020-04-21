@@ -6,7 +6,8 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//
+//  $Id: //depot/Remote/Classes/RemoteCapture.h#53 $
+//  
 
 #import <sys/sysctl.h>
 #import <netinet/tcp.h>
@@ -88,6 +89,8 @@ struct _rmframe {
     CGContextRef cg;
 }
 
++ (BOOL)startCapture:(NSString *)addrs;
+
 @end
 
 @protocol RemoteDelegate <NSObject>
@@ -157,6 +160,10 @@ static NSSet *currentTouches;
 
 - (void)_addWindowAwaitingLatentSystemGestureNotification:(id)a0 deliveredToEventWindow:(id)a1 {
     RMLog( @"_addWindowAwaitingLatentSystemGestureNotification:%@ deliveredToEventWindow:%@", a0, a1 );
+}
+
+- (NSUInteger)_buttonMask {
+    return 0;
 }
 
 - (long)type {
@@ -459,8 +466,8 @@ static UITouchesEvent *realEvent;
             UITouchesEvent *event = realEvent;
             if ( !event ) {
                 event = [[objc_getClass("UITouchesEvent") alloc] _init];
-                static char aPointer[1000];
-                [event _setHIDEvent:(__IOHIDEvent *)aPointer];
+//                static char aPointer[1000];
+//                [event _setHIDEvent:(__IOHIDEvent *)aPointer];
             }
 
             switch ( rpevent.phase ) {
