@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
+//  $Id: //depot/Remote/Classes/RMDeviceController.m#30 $
 //
 
 #define REMOTE_IMPL

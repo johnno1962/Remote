@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
+//  $Id: //depot/Remote/Classes/RMMacroManager.m#15 $
 //
 
 #import "RMMacroManager.h"
@@ -14,6 +15,7 @@
 #if __has_include(<QTKit/QTKit.h>)
 #import <QTKit/QTKit.h>
 #else
+#warning *** Recording functionality not available ***
 #define _XCODE_8
 #endif
 
@@ -198,9 +200,12 @@
     [owner reset];
 }
 
-static NSString *movieTmp = @"/tmp/remote.m4v";
+static NSString *movieTmp;
 
 - (IBAction)record:sender {
+    if (!movieTmp)
+        movieTmp = [NSTemporaryDirectory()
+                    stringByAppendingPathComponent:@"remote.m4v"];
 #ifndef _XCODE_8
     movie = [[QTMovie alloc] initToWritableFile:movieTmp error:NULL];
     lastImageTime = [NSDate timeIntervalSinceReferenceDate];
@@ -209,7 +214,7 @@ static NSString *movieTmp = @"/tmp/remote.m4v";
 #else
     [[NSAlert alertWithMessageText:@"Remote Plugin:"
                      defaultButton:@"OK" alternateButton:nil otherButton:nil
-         informativeTextWithFormat:@"QuickTime framework is not available when compiled under Xcode 8."]
+         informativeTextWithFormat:@"QuickTime framework has not been available since Xcode 8."]
      runModal];
 #endif
 }

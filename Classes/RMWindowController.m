@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
+//  $Id: //depot/Remote/Classes/RMWindowController.m#26 $
 //
 
 #import "RMWindowController.h"
@@ -52,7 +53,7 @@ static int serverSocket;
 + (NSModalResponse)error:(NSString *)format, ... {
     va_list argp; va_start(argp, format);
     NSString *msg = [[NSString alloc] initWithFormat:format arguments:argp];
-    return [[NSAlert alertWithMessageText:@"Replay Plugin:"
+    return [[NSAlert alertWithMessageText:@"Remote Plugin:"
                             defaultButton:@"OK" alternateButton:nil otherButton:nil
                 informativeTextWithFormat:@"%@", msg] runModal];
 }
@@ -180,7 +181,7 @@ static int serverSocket;
     [imageView performSelectorOnMainThread:@selector(setImage:) withObject:image waitUntilDone:NO];
     if ( framep->imageScale != 1. )
         image = [[NSImage alloc] initWithCGImage:img size:NSMakeSize(framep->width,framep->height)];
-    [manager recordImage:image];
+    [manager performSelectorOnMainThread:@selector(recordImage:) withObject:image waitUntilDone:NO];
     CGImageRelease(img);
 }
 
