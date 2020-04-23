@@ -187,8 +187,11 @@ static int serverSocket;
 
 - (void)setDevice:(RMDeviceController *)device {
     if ( !(_device = device) ) {
-        NSString *pngPath = [[NSBundle bundleForClass:[self class]] pathForResource:@"iphone" ofType:@"png"];
-        imageView.image = [[NSImage alloc] initWithData:[NSData dataWithContentsOfFile:pngPath]];
+        NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+        NSString *pngPath = [bundle pathForResource:@"iphone" ofType:@"png"];
+        NSData *data = [NSData dataWithContentsOfFile:pngPath];
+        NSImage *image = [[NSImage alloc] initWithData:data];
+        [imageView performSelectorOnMainThread:@selector(setImage:) withObject:image waitUntilDone:NO];
     }
 }
 

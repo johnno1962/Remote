@@ -44,7 +44,9 @@
     }
     else
         touches = 0;
-    [self setNeedsDisplay];
+    
+    [self performSelectorOnMainThread:@selector(setNeedsDisplay)
+                           withObject:nil waitUntilDone:NO];
 }
 
 - (void)drawRect:(NSRect)rect {
