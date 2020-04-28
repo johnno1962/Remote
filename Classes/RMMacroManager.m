@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMMacroManager.m#15 $
+//  $Id: //depot/Remote/Classes/RMMacroManager.m#16 $
 //
 
 #import "RMMacroManager.h"
@@ -115,7 +115,7 @@
     if ( [name isEqualToString:@"Import Macro..."] ) {
         NSOpenPanel* opener = [NSOpenPanel openPanel];
         [opener setTitle:@"Load Macro Definition..."];
-        if ( [opener runModal] != NSOKButton )
+        if ( [opener runModal] != NSModalResponseOK )
             return;
         [owner logSet:[NSString stringWithContentsOfURL:opener.URL encoding:NSUTF8StringEncoding error:NULL]];
         macroName.stringValue = [[opener.URL.path lastPathComponent] stringByDeletingPathExtension];
@@ -125,7 +125,7 @@
         [saver setTitle:@"Save Macro Definition"];
         [saver setExtensionHidden:NO];
         [saver setNameFieldStringValue:macroName.stringValue];
-        if ( [saver runModal] != NSOKButton )
+        if ( [saver runModal] != NSModalResponseOK )
             return;
         if ( ![[self macroContents] writeToURL:saver.URL atomically:NO encoding:NSUTF8StringEncoding error:NULL] )
             [[owner class] error:@"Unable to export macro"];
@@ -239,7 +239,7 @@ static NSString *movieTmp;
     [saver setTitle:@"Save Recorded Movie"];
     [saver setExtensionHidden:NO];
     [saver setNameFieldStringValue:@"remote.m4v"];
-    if ( [saver runModal] != NSOKButton )
+    if ( [saver runModal] != NSModalResponseOK )
         return;
 
     NSError *err = nil;

@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMWindowController.m#26 $
+//  $Id: //depot/Remote/Classes/RMWindowController.m#27 $
 //
 
 #import "RMWindowController.h"
@@ -175,6 +175,7 @@ static int serverSocket;
 }
 
 - (void)updateImage:(CGImageRef)img {
+    if (!self.device) return;
     struct _rmframe *framep = &self.device->frame;
     NSSize size = {framep->width*framep->imageScale, framep->height*framep->imageScale};
     NSImage *image = [[NSImage alloc] initWithCGImage:img size:size];
