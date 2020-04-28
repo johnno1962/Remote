@@ -9,7 +9,7 @@
 typedef CFTypeRef __IOHIDEvent;
 typedef CFTypeRef __GSEvent;
 
-@interface UITouch (FromDump) // : NSObject <_UIResponderForwardable> {
+@interface UITouch (FromXprobe) // : NSObject <_UIResponderForwardable> {
 //   double _movementMagnitudeSquared;
 //   long _phase;
 //   unsigned long _tapCount;

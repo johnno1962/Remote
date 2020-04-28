@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RemoteCapture.h#58 $
+//  $Id: //depot/Remote/Classes/RemoteCapture.h#61 $
 //  
 
 #import <sys/sysctl.h>
@@ -43,7 +43,11 @@
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 
-BOOL remoteLegacy = FALSE;
+#ifdef REMOTE_LEGACY
+static BOOL remoteLegacy = TRUE;
+#else
+static BOOL remoteLegacy = FALSE;
+#endif
 
 typedef unsigned rmpixel_t;
 typedef unsigned rmencoded_t;
@@ -391,9 +395,9 @@ static CGSize bufferSize;
     if (!writeQueue)
         writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
 
-    NSOperatingSystemVersion minimumVersion = {13, 0, 0};
-    if (![[NSProcessInfo new] isOperatingSystemAtLeastVersion:minimumVersion])
-        remoteLegacy = TRUE;
+//    NSOperatingSystemVersion minimumVersion = {13, 0, 0};
+//    if (![[NSProcessInfo new] isOperatingSystemAtLeastVersion:minimumVersion])
+//        remoteLegacy = TRUE;
 
     [remoteDelegate remoteConnected:TRUE];
     [self performSelectorInBackground:@selector(processEvents) withObject:nil];
@@ -424,8 +428,8 @@ static NSTimeInterval mostRecentScreenUpdate;
         frameno = 0;
     }
 
-    RemoteCapture *buffer = buffers[frameno++%2];
-    RemoteCapture *prevbuff = buffers[frameno%2];
+    RemoteCapture *buffer = buffers[frameno+1&1];
+    RemoteCapture *prevbuff = buffers[frameno&1];
 
 //    memset(buffer->buffer, 128, (char *)buffer->buffend - (char *)buffer->buffer);
 
@@ -451,12 +455,24 @@ static NSTimeInterval mostRecentScreenUpdate;
         RMDebug(@"CAPTURE0");
         UIScreen *mainScreen = [UIScreen mainScreen];
         CGSize screenSize = mainScreen.bounds.size;
-        UIView *snapshotView = [mainScreen snapshotViewAfterScreenUpdates:YES];
+#if 0
+        UIView *snapshotView = [keyWindow snapshotViewAfterScreenUpdates:YES];
         RMDebug(@"CAPTURE1");
         UIGraphicsBeginImageContextWithOptions(screenSize, YES, 0);
-        [snapshotView drawViewHierarchyInRect:snapshotView.bounds afterScreenUpdates:YES];
+        [snapshotView drawViewHierarchyInRect:snapshotView.bounds afterScreenUpdates:NO];
         UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
+#else
+//        extern CGImageRef UIGetScreenImage(void);
+//        CGImageRef screenshot = UIGetScreenImage();
+//        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
+        UIGraphicsBeginImageContext(screenSize);
+        for (UIWindow *window in [UIApplication sharedApplication].windows)
+            [window
+             drawViewHierarchyInRect:mainScreen.bounds afterScreenUpdates:YES];
+        UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+#endif
         RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
         CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), image.CGImage);
         BOOL displayingKeyboard = [[UIApplication sharedApplication].windows.lastObject
@@ -473,14 +489,13 @@ static NSTimeInterval mostRecentScreenUpdate;
                 break;
             }
         if (emptyImage) {
-            frameno--;
             [self performSelector:@selector(capture:) withObject:timestamp afterDelay:0.1];
             return;
         }
     }
 
     pending = 0;
-    unsigned thisFrameno = frameno;
+    unsigned thisFrameno = ++frameno;
 
     dispatch_async(writeQueue, ^{
         if (thisFrameno < frameno)
