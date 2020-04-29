@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RemoteCapture.h#63 $
+//  $Id: //depot/Remote/Classes/RemoteCapture.h#66 $
 //  
 
 #import <sys/sysctl.h>
@@ -151,27 +151,27 @@ static NSSet *currentTouches;
 }
 
 - (UITouch *)_firstTouchForView:(UIView *)view {
-    RMLog(@"_firstTouchForView: %@", view);
+    RMDebug(@"_firstTouchForView: %@", view);
     return currentTouch;
 }
 
 - (NSSet *)touchesForView:(UIView *)view {
-    RMLog(@"touchesForWindow:%@", view);
+    RMDebug(@"touchesForWindow:%@", view);
     return currentTouches;
 }
 
 - (NSSet *)touchesForWindow:(UIWindow *)window {
-    RMLog(@"touchesForWindow:%@", window);
+    RMDebug(@"touchesForWindow:%@", window);
     return currentTouches;
 }
 
 - (NSSet *)touchesForGestureRecognizer:(UIGestureRecognizer *)rec {
-    RMLog(@"touchesForGestureRecognizer:%@", rec);
+    RMDebug(@"touchesForGestureRecognizer:%@", rec);
     return currentTouches;
 }
 
 - (void)_removeTouch:(UITouch *)touch fromGestureRecognizer:(UIGestureRecognizer *)rec {
-    RMLog(@"_removeTouch:%@ fromGestureRecognizer:%@", touch, rec);
+    RMDebug(@"_removeTouch:%@ fromGestureRecognizer:%@", touch, rec);
 }
 
 - (NSSet *)allTouches {
@@ -179,7 +179,7 @@ static NSSet *currentTouches;
 }
 
 - (void)_addWindowAwaitingLatentSystemGestureNotification:(id)a0 deliveredToEventWindow:(id)a1 {
-    RMLog(@"_addWindowAwaitingLatentSystemGestureNotification:%@ deliveredToEventWindow:%@", a0, a1);
+    RMDebug(@"_addWindowAwaitingLatentSystemGestureNotification:%@ deliveredToEventWindow:%@", a0, a1);
 }
 
 - (NSUInteger)_buttonMask {
@@ -190,6 +190,10 @@ static NSSet *currentTouches;
     return 0;
 }
 
+@end
+
+@interface UIView(Description)
+- (NSString *)recursiveDescription;
 @end
 
 @interface NSObject(ForwardReference)
@@ -413,7 +417,7 @@ static BOOL capturing, displayedKeyboard;
 static NSTimeInterval mostRecentScreenUpdate;
 
 + (void)capture:(NSNumber *)timestamp {
-    RMDebug(@"capture: %f %f", timestamp.doubleValue, mostRecentScreenUpdate);
+//    RMDebug(@"capture: %f %f", timestamp.doubleValue, mostRecentScreenUpdate);
     if (timestamp.doubleValue < mostRecentScreenUpdate)
         return;
     UIScreen *screen = screens[0];
@@ -461,13 +465,18 @@ static NSTimeInterval mostRecentScreenUpdate;
         RMDebug(@"CAPTURE0");
         UIScreen *mainScreen = [UIScreen mainScreen];
         CGSize screenSize = mainScreen.bounds.size;
-#if 0
+#if 00
         UIView *snapshotView = [keyWindow snapshotViewAfterScreenUpdates:YES];
         RMDebug(@"CAPTURE1");
         UIGraphicsBeginImageContextWithOptions(screenSize, YES, 0);
         [snapshotView drawViewHierarchyInRect:snapshotView.bounds afterScreenUpdates:NO];
         UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
+        BOOL displayingKeyboard = [[UIApplication sharedApplication].windows.lastObject
+                                   isKindOfClass:objc_getClass("UIRemoteKeyboardWindow")];
+        if (displayingKeyboard)
+            displayedKeyboard = TRUE;
+        skipEcho = displayedKeyboard ? displayingKeyboard ? 10 : 8 : 6;
 #else
 //        extern CGImageRef UIGetScreenImage(void);
 //        CGImageRef screenshot = UIGetScreenImage();
@@ -475,17 +484,17 @@ static NSTimeInterval mostRecentScreenUpdate;
         UIGraphicsBeginImageContext(screenSize);
         for (UIWindow *window in [UIApplication sharedApplication].windows)
             [window
-             drawViewHierarchyInRect:mainScreen.bounds afterScreenUpdates:YES];
+             drawViewHierarchyInRect:mainScreen.bounds afterScreenUpdates:NO];
         UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
-#endif
-        RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
-        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), image.CGImage);
         BOOL displayingKeyboard = [[UIApplication sharedApplication].windows.lastObject
                                    isKindOfClass:objc_getClass("UIRemoteKeyboardWindow")];
         if (displayingKeyboard)
             displayedKeyboard = TRUE;
-        skipEcho = displayedKeyboard ? displayingKeyboard ? 10 : 8 : 6;
+        skipEcho = displayedKeyboard ? displayingKeyboard ? 1 : 1 : 1;
+#endif
+        RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
+        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), image.CGImage);
         capturing = FALSE;
 
         BOOL emptyImage = TRUE;
@@ -554,11 +563,12 @@ static NSTimeInterval mostRecentScreenUpdate;
                 location2 = {rpevent.touches[1].x, rpevent.touches[1].y};
             static UITextAutocorrectionType saveAuto;
             static BOOL isTextfield, isKeyboard;
+            static UITextField *textField;
             static UITouch *currentTouch2;
             static UIView *currentTarget;
             static unsigned touchIdentifier = 100000;
 
-            static UITouchesEvent *event = nil;
+            static UITouchesEvent *event;
             if (!event)
                 event = [[objc_getClass("UITouchesEvent") alloc] _init];
 
@@ -573,9 +583,9 @@ static NSTimeInterval mostRecentScreenUpdate;
                             currentTarget = found;
                     }
 
-                    RMLog(@"Double Target selected: %@", currentTarget);
+                    RMDebug(@"Double Target selected: %@", currentTarget);
 
-                    currentTouch2 = [[UITouch alloc] init];
+                    currentTouch2 = [UITouch new];
 
                     [currentTouch2 setTimestamp:timestamp];
                     [currentTouch2 setInitialTouchTimestamp:timestamp];
@@ -612,10 +622,17 @@ static NSTimeInterval mostRecentScreenUpdate;
                     isKeyboard = [currentTarget
                                   isKindOfClass:objc_getClass("UIKeyboardLayoutStar")];
 
-                    RMLog(@"Target selected: %@ %d %d",
-                          currentTarget, isTextfield, isKeyboard);
+                    if (currentTarget.superview.class ==
+                        objc_getClass("UIKeyboardEmojiCollectionViewCell")) {
+                        NSString *emoji = [(UILabel *)currentTarget.subviews[0] text];
+                        textField.text = [textField.text stringByAppendingString:emoji];
+                    }
+
+                    RMDebug(@"Target selected: %@ %d %d\n%@", currentTarget,
+                          isTextfield, isKeyboard, [currentTarget recursiveDescription]);
+
                     if (isTextfield) {
-                        UITextField *textField = (UITextField *)currentTarget;
+                        textField = (UITextField *)currentTarget;
                         saveAuto = textField.autocorrectionType;
                         textField.autocorrectionType = UITextAutocorrectionTypeNo;
                     }
@@ -697,10 +714,9 @@ static NSTimeInterval mostRecentScreenUpdate;
                     if (!isKeyboard)
                         [currentTarget touchesEnded:currentTouches withEvent:fakeEvent];
 
-                    if (saveAuto) {
+                    if (isTextfield) {
                         UITextField *textField = (UITextField *)currentTarget;
                         textField.autocorrectionType = saveAuto;
-                        saveAuto = 0;
                     }
 
                     currentTouches = nil;
