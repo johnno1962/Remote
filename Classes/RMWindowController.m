@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMWindowController.m#27 $
+//  $Id: //depot/Remote/Classes/RMWindowController.m#30 $
 //
 
 #import "RMWindowController.h"
@@ -73,18 +73,18 @@ static int serverSocket;
     serverAddr.sin_port = htons(port);
 
     int optval = 1;
-    if ( (serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
-        [self error:@"Could not open service socket: %s", strerror( errno )];
-    else if ( fcntl(serverSocket, F_SETFD, FD_CLOEXEC) < 0 )
-        [self error:@"Could not set close exec: %s", strerror( errno )];
-    else if ( setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval) < 0 )
-        [self error:@"Could not set socket option: %s", strerror( errno )];
-    else if ( setsockopt( serverSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0 )
-        [self error:@"Could not set socket option: %s", strerror( errno )];
-    else if ( bind( serverSocket, (struct sockaddr *)&serverAddr, sizeof serverAddr ) < 0 )
-        [self error:@"Could not bind service socket: %s.", strerror( errno )];
-    else if ( listen( serverSocket, 5 ) < 0 )
-        [self error:@"Service socket would not listen: %s", strerror( errno )];
+    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        [self error:@"Could not open service socket: %s", strerror(errno)];
+    else if (fcntl(serverSocket, F_SETFD, FD_CLOEXEC) < 0)
+        [self error:@"Could not set close exec: %s", strerror(errno)];
+    else if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval) < 0)
+        [self error:@"Could not set socket option: %s", strerror(errno)];
+    else if (setsockopt(serverSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
+        [self error:@"Could not set socket option: %s", strerror(errno)];
+    else if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof serverAddr) < 0)
+        [self error:@"Could not bind service socket: %s.", strerror(errno)];
+    else if (listen(serverSocket, 5) < 0)
+        [self error:@"Service socket would not listen: %s", strerror(errno)];
     else
         [self performSelectorInBackground:@selector(backgroundConnectionService) withObject:nil];
 }
@@ -92,30 +92,34 @@ static int serverSocket;
 // accept connection from serverSocket
 + (void)backgroundConnectionService {
 
-    NSLog( @"RMWindowController: Waiting for connections..." );
-    while ( TRUE ) {
+    NSLog(@"RMWindowController: Waiting for connections...");
+    while (TRUE) {
         struct sockaddr_in clientAddr;
         socklen_t addrLen = sizeof clientAddr;
 
-        int clientSocket = accept( serverSocket, (struct sockaddr *)&clientAddr, &addrLen );
-        if ( clientSocket > 0 ) {
+        int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &addrLen);
+        if (clientSocket > 0) {
             int optval = 1;
-            if ( setsockopt( clientSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0 )
+            if (setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
                 [self error:@"Set TCP_NODELAY %s", strerror(errno)];
 
             NSString *ipAddr = [NSString stringWithFormat:@"%s",//:%d", // can be unique to port
-                                inet_ntoa( clientAddr.sin_addr ), ntohs( clientAddr.sin_port )];
-            NSLog( @"RMWindowController: Connection from %@", ipAddr );
+                                inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port)];
+            NSLog(@"RMWindowController: Connection from %@", ipAddr);
 
-            dispatch_sync( dispatch_get_main_queue(), ^{
+            dispatch_sync(dispatch_get_main_queue(), ^{
                 lastRMWindowController = connectionWindows[ipAddr];
-                if ( !lastRMWindowController )
+                if (!lastRMWindowController)
                     connectionWindows[ipAddr] = lastRMWindowController = [[self class] new];
                 [NSApp activateIgnoringOtherApps:YES];
                 [lastRMWindowController showWindow:nil];
-                lastRMWindowController.window.title = [NSString stringWithFormat:@"Connection from %@", ipAddr];
                 lastRMWindowController.device = [[RMDeviceController alloc] initSocket:clientSocket owner:lastRMWindowController];
-            } );
+                lastRMWindowController.window.title =
+                    [NSString stringWithFormat:@"%s: %s (%@)",
+                     REMOTE_APPNAME,
+                     lastRMWindowController.device->device.hostname,
+                     ipAddr];
+            });
         }
         else
             [NSThread sleepForTimeInterval:.5];
@@ -130,9 +134,9 @@ static int serverSocket;
     ifc.ifc_buf = buffer;
 
     if (ioctl(serverSocket, SIOCGIFCONF, &ifc) < 0)
-        [[self class] error:@"ioctl error %s", strerror( errno )];
+        [[self class] error:@"ioctl error %s", strerror(errno)];
     else
-        for ( char *ptr = buffer; ptr < buffer + ifc.ifc_len; ) {
+        for (char *ptr = buffer; ptr < buffer + ifc.ifc_len;) {
             struct ifreq *ifr = (struct ifreq *)ptr;
             size_t len = MAX(sizeof(struct sockaddr), ifr->ifr_addr.sa_len);
             ptr += sizeof(ifr->ifr_name) + len;	// for next one in buffer
@@ -141,14 +145,14 @@ static int serverSocket;
                 continue;	// ignore if not desired address family
 
             struct sockaddr_in *iaddr = (struct sockaddr_in *)&ifr->ifr_addr;
-            [addrs addObject:[NSString stringWithUTF8String:inet_ntoa( iaddr->sin_addr )]];
+            [addrs addObject:[NSString stringWithUTF8String:inet_ntoa(iaddr->sin_addr)]];
         }
     
     return addrs;
 }
 
 - (instancetype)init {
-    if ( (self = [super initWithWindowNibName:self.className]) ) {
+    if ((self = [super initWithWindowNibName:self.className])) {
         [self loadWindow];
         [manager updateLoaderItems];
     }
@@ -180,14 +184,14 @@ static int serverSocket;
     NSSize size = {framep->width*framep->imageScale, framep->height*framep->imageScale};
     NSImage *image = [[NSImage alloc] initWithCGImage:img size:size];
     [imageView performSelectorOnMainThread:@selector(setImage:) withObject:image waitUntilDone:NO];
-    if ( framep->imageScale != 1. )
+    if (framep->imageScale != 1.)
         image = [[NSImage alloc] initWithCGImage:img size:NSMakeSize(framep->width,framep->height)];
     [manager performSelectorOnMainThread:@selector(recordImage:) withObject:image waitUntilDone:NO];
     CGImageRelease(img);
 }
 
 - (void)setDevice:(RMDeviceController *)device {
-    if ( !(_device = device) ) {
+    if (!(_device = device)) {
         NSBundle *bundle = [NSBundle bundleForClass:[self class]];
         NSString *pngPath = [bundle pathForResource:@"iphone" ofType:@"png"];
         NSData *data = [NSData dataWithContentsOfFile:pngPath];
@@ -207,7 +211,7 @@ static CGFloat windowTitleHeight = 22.;
 
     [self.window setFrame:windowFrame display:YES animate:NO];
 
-    if ( self.window.frame.size.height != windowFrame.size.height ) {
+    if (self.window.frame.size.height != windowFrame.size.height) {
         CGFloat windowClipScale =
             (self.window.frame.size.height-windowTitleHeight)/
             (windowFrame.size.height-windowTitleHeight);
@@ -221,13 +225,13 @@ static CGFloat windowTitleHeight = 22.;
 
 - (NSSize)windowWillResize:(NSWindow *)sender
                     toSize:(NSSize)frameSize {
-    if ( aspect )
+    if (aspect)
         frameSize.height = frameSize.width*aspect+windowTitleHeight;
     return frameSize;
 }
 
 - (void)windowWillClose:(NSNotification *)notification {
-    if ( notification.object == self.window )
+    if (notification.object == self.window)
         [self.device shutdown];
 }
 
@@ -244,7 +248,7 @@ static CGFloat windowTitleHeight = 22.;
     cancel = NO;
 
     static NSRegularExpression *parser;
-    if ( !parser )
+    if (!parser)
         parser = [NSRegularExpression regularExpressionWithPattern:@"<div id=\"([^\"]+)\"[^>]*>\\s*("
                   "(Began|Moved|Ended) (?:t:)?([\\d.]+) (?:x:)?([\\d.]+) (?:y:)?([\\d.]+)( (?:x:)?([\\d.]+) (?:y:)?([\\d.]+))?|"
                   "Expect timeout:([\\d.]+) tolerance:(\\d+).+?"
@@ -259,9 +263,9 @@ static CGFloat windowTitleHeight = 22.;
 
       [manager performSelectorOnMainThread:@selector(logAnimate:) withObject:divID waitUntilDone:NO];
 
-      if ( phase ) {
+      if (phase) {
           struct _rmevent event;
-          switch ( [phase characterAtIndex:0] ) {
+          switch ([phase characterAtIndex:0]) {
               case 'B':
                   event.phase = [result groupAtIndex:7 inString:html] ? RMTouchBeganDouble : RMTouchBegan;
                   break;
@@ -278,21 +282,21 @@ static CGFloat windowTitleHeight = 22.;
                   event.phase = RMTouchCancelled;
                   break;
               default:
-                  NSLog( @"Remote: Invalid event phase %@", phase );
+                  NSLog(@"Remote: Invalid event phase %@", phase);
           }
 
           NSTimeInterval wait = [result groupAtIndex:4 inString:html].doubleValue;
-          while ( wait && !cancel ) {
+          while (wait && !cancel) {
               NSTimeInterval sleep = MIN(0.5, wait);
               [NSThread sleepForTimeInterval:sleep];
               wait -= sleep;
           }
 
-          if ( cancel )
+          if (cancel)
               dispatch_sync(dispatch_get_main_queue(), ^{
-                  switch ( [[NSAlert alertWithMessageText:@"Replay Cancelled:" defaultButton:@"Cancel Replay"
+                  switch ([[NSAlert alertWithMessageText:@"Replay Cancelled:" defaultButton:@"Cancel Replay"
                                           alternateButton:@"Cancel Wait Only" otherButton:nil
-                                informativeTextWithFormat:@"Replay cancelled, do you wish to continue?"] runModal] ) {
+                                informativeTextWithFormat:@"Replay cancelled, do you wish to continue?"] runModal]) {
 
                       case NSAlertAlternateReturn:
                           cancel = FALSE;
@@ -308,7 +312,7 @@ static CGFloat windowTitleHeight = 22.;
 
           [self.device writeEvent:cancel?NULL:&event];
       }
-      else if ( enc64 ) {
+      else if (enc64) {
           NSTimeInterval timeout = [result groupAtIndex:10 inString:html].doubleValue;
           unsigned tolerance = [result groupAtIndex:11 inString:html].intValue;
           RemoteCapture *snapshot = [self.device recoverBuffer:enc64];
@@ -316,20 +320,20 @@ static CGFloat windowTitleHeight = 22.;
           completed = NO;
           unsigned difference = ~0;
           NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
-          while ( !cancel && [NSDate timeIntervalSinceReferenceDate] - start < timeout ) {
+          while (!cancel && [NSDate timeIntervalSinceReferenceDate] - start < timeout) {
               difference = [self.device differenceAgainst:snapshot];
-              if ( difference <= tolerance ) {
+              if (difference <= tolerance) {
                   completed = YES;
                   break;
               }
               [NSThread sleepForTimeInterval:.5];
           }
 
-          if ( !completed && !cancel ) {
+          if (!completed && !cancel) {
               dispatch_sync(dispatch_get_main_queue(), ^{
-                  switch ( [[NSAlert alertWithMessageText:@"Replay Expect Failed:" defaultButton:@"Cancel Replay"
+                  switch ([[NSAlert alertWithMessageText:@"Replay Expect Failed:" defaultButton:@"Cancel Replay"
                                           alternateButton:@"Update tolerance" otherButton:@"Update snapshot"
-                                informativeTextWithFormat:@"Difference against reference of %u compared with of %u and timeout expired", difference, tolerance] runModal] ) {
+                                informativeTextWithFormat:@"Difference against reference of %u compared with of %u and timeout expired", difference, tolerance] runModal]) {
 
                       case NSAlertDefaultReturn:
                           cancel = TRUE;
@@ -352,18 +356,18 @@ static CGFloat windowTitleHeight = 22.;
           float imageScale = [result groupAtIndex:15 inString:html].floatValue;
 
           dispatch_sync(dispatch_get_main_queue(), ^{
-              if ( self.device && (width != self.device->frame.width || height != self.device->frame.height) )
-                  switch ( [[NSAlert alertWithMessageText:@"Replay Device Mismatch:" defaultButton:@"OK"
+              if (self.device && (width != self.device->frame.width || height != self.device->frame.height))
+                  switch ([[NSAlert alertWithMessageText:@"Replay Device Mismatch:" defaultButton:@"OK"
                                           alternateButton:@"Cancel" otherButton:nil
-                                informativeTextWithFormat:@"Macro recorded on a device with a different screen resolution. Events will not match up with the interface. Proceed?"] runModal] ) {
+                                informativeTextWithFormat:@"Macro recorded on a device with a different screen resolution. Events will not match up with the interface. Proceed?"] runModal]) {
                       case NSAlertAlternateReturn:
                           cancel = TRUE;
                           break;
                   }
-              else if ( self.device && imageScale != self.device->frame.imageScale )
-                  switch ( [[NSAlert alertWithMessageText:@"Replay Resolution Mismatch:" defaultButton:@"OK"
+              else if (self.device && imageScale != self.device->frame.imageScale)
+                  switch ([[NSAlert alertWithMessageText:@"Replay Resolution Mismatch:" defaultButton:@"OK"
                                           alternateButton:@"Cancel" otherButton:nil
-                                informativeTextWithFormat:@"Macro recorded on a device with a different screen resolution (scale). Snapshots will not compare correctly. Proceed?"] runModal] ) {
+                                informativeTextWithFormat:@"Macro recorded on a device with a different screen resolution (scale). Snapshots will not compare correctly. Proceed?"] runModal]) {
                       case NSAlertAlternateReturn:
                           cancel = TRUE;
                           break;
@@ -390,7 +394,7 @@ static CGFloat windowTitleHeight = 22.;
 
 - (NSTimeInterval)timeSinceLastEvent {
     NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
-    if ( !lastEvent )
+    if (!lastEvent)
         lastEvent = now;
     NSTimeInterval dt = now-lastEvent;
     lastEvent = now;

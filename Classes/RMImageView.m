@@ -18,9 +18,9 @@
 }
 
 - (void)drawTouches:(const struct _rmevent *)newEvent {
-    if ( newEvent ) {
+    if(newEvent) {
         event = *newEvent;
-        switch ( event.phase ) {
+        switch(event.phase) {
             case RMTouchBeganDouble:
                 touches = 2;
                 break;
@@ -39,7 +39,7 @@
                 break;
 
             default:
-                NSLog( @"RPCapture: Invalid event: %d", event.phase );
+                NSLog(@"RPCapture: Invalid event: %d", event.phase);
         }
     }
     else
@@ -51,7 +51,7 @@
 
 - (void)drawRect:(NSRect)rect {
     [super drawRect:rect];
-    if ( !owner.device )
+    if(!owner.device)
         return;
 
     [[NSColor colorWithCalibratedWhite:.5 alpha:.6] set];
@@ -60,7 +60,7 @@
         deviceHeight = owner.device->frame.height,
         scale = self.frame.size.height/deviceHeight;
 
-    for ( int t=0 ; t<touches ; t++ ) {
+    for(int t=0 ; t<touches ; t++) {
         CGFloat x = event.touches[t].x*scale,
             y = (deviceHeight-event.touches[t].y)*scale;
         [[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(x-radius/2.,

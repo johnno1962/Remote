@@ -6,11 +6,12 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMDeviceController.m#30 $
+//  $Id: //depot/Remote/Classes/RMDeviceController.m#32 $
 //
 
 #define REMOTE_IMPL
 #import "RMDeviceController.h"
+#import "RMWindowController.h"
 #import "RMImageView.h"
 
 #import <zlib.h>
@@ -23,28 +24,28 @@
 - (void)recover:(const void *)tmp against:(RemoteCapture *)prevbuff {
 
     register rmencoded_t expectedDiff = 0, check = 0, *data = (rmencoded_t *)tmp;
-    for ( register rmpixel_t
+    for (register rmpixel_t
          *curr = self->buffer,
          *prev = prevbuff->buffer;
-         curr < self->buffend ; ) {
+         curr < self->buffend ;) {
 
         register rmencoded_t diff = *data++;
         unsigned count = diff & 0xff;
         diff &= 0xffffff00;
 
         check += *curr++ = (*prev++ + diff + expectedDiff) | 0x000000ff;
-        if ( count ) {
-            if ( count == 0xff )
+        if (count) {
+            if (count == 0xff)
                 count = *data++;
-            for ( register rmpixel_t *end = MIN(curr + count, self->buffend) ; curr < end ; )
+            for (register rmpixel_t *end = MIN(curr + count, self->buffend) ; curr < end ;)
                 check += *curr++ = (*prev++ + diff + expectedDiff) | 0x000000ff;
         }
 
         expectedDiff = curr[-1] - prev[-1];
     }
 
-    if ( check != *data )
-        NSLog( @"RemoteCapture: recover problem" );
+    if (check != *data)
+        NSLog(@"RemoteCapture: recover problem");
 }
 
 @end
@@ -57,31 +58,32 @@
 }
 
 - (instancetype)initSocket:(int)socket owner:(id<RMDeviceDelegate>)theOwner {
-    if ( (self = [super init]) ) {
+    if ((self = [super init])) {
         [owner = theOwner reset];
         clientSocket = socket;
-        [self performSelectorInBackground:@selector(renderService) withObject:nil];
+        NSLog(@"Initialising device from %d", clientSocket);
+        if (read(clientSocket, &device, sizeof device) != sizeof device)
+            [RMWindowController error:@"Could not read device info"];
+        else if (device.version != REMOTE_VERSION)
+            [RMWindowController error:@"Invalid remote version: %d != %d",
+                  device.version, REMOTE_VERSION];
+        else if(device.magic != REMOTE_MAGIC)
+            [RMWindowController error:@"Non-matching RemoteCapture.h?"];
+        else
+            [self performSelectorInBackground:@selector(renderService) withObject:nil];
     }
     return self;
 }
 
 // process a connection
 - (void)renderService {
-    FILE *renderStream = fdopen( clientSocket, "r" );
+    FILE *renderStream = fdopen(clientSocket, "r");
     NSArray *buffers;
     int frameno = 0;
     void *tmp = NULL;
     int tmpsize = 0;
 
-    if( fread(&device, 1, sizeof device, renderStream) != sizeof device )
-        NSLog( @"Could not read device info" );
-
-    if( device.magic != REMOTE_MAGIC ) {
-        NSLog( @"Non-matching RemoteCapture.h?" );
-        fclose( renderStream );
-        return;
-    }
-
+    NSLog(@"renderService started %p", renderStream);
     NSString *deviceString = [NSString stringWithFormat:@"<div>Hardware %s</div>", device.machine];
     [(NSObject *)owner performSelectorOnMainThread:@selector(logSet:) withObject:deviceString waitUntilDone:NO];
     deviceString = [NSString stringWithFormat:@"Host: %@", [NSString stringWithUTF8String:device.hostname]];
@@ -91,10 +93,10 @@
 
     // loop through frames
     struct _rmframe newFrame;
-    while ( fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame ) {
+    while (fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame) {
 
         // event from device
-        if ( newFrame.length < 0 ) {
+        if (newFrame.length < 0) {
             int touchCount = -newFrame.length;
 
             struct _rmevent event;
@@ -106,14 +108,14 @@
 
             do {
                 int touchno = newFrame.length + touchCount;
-                if ( touchno < RMMAX_TOUCHES ) {
+                if (touchno < RMMAX_TOUCHES) {
                     event.touches[touchno].x = newFrame.x;
                     event.touches[touchno].y = newFrame.y;
                 }
                 [arg appendFormat:@" x:%.1f y:%.1f", newFrame.x, newFrame.y];
             }
-            while ( newFrame.length != -1 &&
-                   fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame );
+            while (newFrame.length != -1 &&
+                   fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame);
 
             [owner.imageView drawTouches:&event];
 
@@ -123,8 +125,8 @@
         }
 
         // resize display window/NSImageView
-        if ( !buffers || newFrame.imageScale != frame.imageScale ||
-                newFrame.width != frame.width || newFrame.height != frame.height ) {
+        if (!buffers || newFrame.imageScale != frame.imageScale ||
+                newFrame.width != frame.width || newFrame.height != frame.height) {
 
             dispatch_sync(dispatch_get_main_queue(), ^{
                 [owner resize:NSMakeSize(newFrame.width, newFrame.height)];
@@ -144,32 +146,32 @@
 
         frame = newFrame;
 
-        //NSLog( @"Incoming bytes from client: %u", frame.length );
+        //NSLog(@"Incoming bytes from client: %u", frame.length);
 
         BOOL isCompressed = frame.length >= REMOTE_COMPRESSED_OFFSET;
-        if ( isCompressed )
+        if (isCompressed)
             frame.length -= REMOTE_COMPRESSED_OFFSET;
 
-        if ( tmpsize < frame.length ) {
-            free( tmp );
+        if (tmpsize < frame.length) {
+            free(tmp);
             tmp = malloc(frame.length);
             tmpsize = frame.length;
         }
 
-        if ( fread(tmp, 1, frame.length, renderStream) != frame.length )
+        if (fread(tmp, 1, frame.length, renderStream) != frame.length)
             break;
 
-        if ( isCompressed ) {
+        if (isCompressed) {
             struct _rmcompress *buff = (struct _rmcompress *)tmp;
             uLong bytes = buff->bytes;
             void *buff2 = malloc(bytes);
 
-            if ( uncompress(buff2, &bytes, buff->data, frame.length-sizeof buff->bytes) != Z_OK || bytes != buff->bytes ) {
-                NSLog( @"RemoteCapture: Uncompress problem" );
+            if (uncompress(buff2, &bytes, buff->data, frame.length-sizeof buff->bytes) != Z_OK || bytes != buff->bytes) {
+                NSLog(@"RemoteCapture: Uncompress problem");
                 break;
             }
 
-            free( tmp );
+            free(tmp);
             tmp = buff2;
             tmpsize = (int)buff->bytes;
         }
@@ -184,18 +186,18 @@
         [owner updateImage:[currentBuffer cgImage]];
     }
 
-    NSLog( @"renderService exits" );
-    fclose( renderStream );
+    NSLog(@"renderService exits");
+    fclose(renderStream);
     owner.device = nil;
     free(tmp);
 }
 
 - (void)shutdown {
-    close( clientSocket );
+    close(clientSocket);
 }
 
 - (NSString *)snapshot:(RemoteCapture *)reference withFormat:(NSString *)format {
-    if ( !reference )
+    if (!reference)
         reference = currentBuffer;
 
     struct _rmframe ftmp = { frame.width, frame.height, .5 };
@@ -219,11 +221,11 @@
     NSData *out = [reference subtractAndEncode:nil];
 
 #ifdef COMPRESS_SNAPSHOT
-    struct _rmcompress *buff = malloc( sizeof buff->bytes+out.length+100 );
+    struct _rmcompress *buff = malloc(sizeof buff->bytes+out.length+100);
     uLongf clen = buff->bytes = (unsigned)out.length;
-    if ( compress(buff->data, &clen,
-                  (const Bytef *)out.bytes, buff->bytes) != Z_OK )
-        NSLog( @"RemoteCapture: Compression problem" );
+    if (compress(buff->data, &clen,
+                  (const Bytef *)out.bytes, buff->bytes) != Z_OK)
+        NSLog(@"RemoteCapture: Compression problem");
 
     data = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes + clen freeWhenDone:YES];
 #endif
@@ -241,9 +243,9 @@
     void *buff2 = malloc(bytes);
 
     Bytef *backwardCompatibility = buff->data + sizeof(uLongf) - sizeof buff->bytes;
-    if ( uncompress(buff2, &bytes, buff->data, encData.length - sizeof buff->bytes) != Z_OK &&
-        uncompress(buff2, &bytes, backwardCompatibility, encData.length - sizeof buff->bytes) != Z_OK )
-        NSLog( @"RemoteCapture: Uncompress problem" );
+    if (uncompress(buff2, &bytes, buff->data, encData.length - sizeof buff->bytes) != Z_OK &&
+        uncompress(buff2, &bytes, backwardCompatibility, encData.length - sizeof buff->bytes) != Z_OK)
+        NSLog(@"RemoteCapture: Uncompress problem");
 
     encData = [NSData dataWithBytesNoCopy:buff2 length:bytes freeWhenDone:YES];
 #endif
@@ -273,13 +275,13 @@
 
 - (void)writeEvent:(const struct _rmevent *)event {
     [owner.imageView drawTouches:event];
-    if ( event && write( clientSocket, event, sizeof *event ) != sizeof *event )
-        NSLog( @"Remote: event write error" );
+    if (event && write(clientSocket, event, sizeof *event) != sizeof *event)
+        NSLog(@"Remote: event write error");
 }
 
 - (NSMutableString *)startEvent:(RMTouchPhase)phase {
     NSString *phaseString;
-    switch ( phase ) {
+    switch (phase) {
         case RMTouchBegan: phaseString = @"Began"; break;
         case RMTouchMoved: phaseString = @"Moved"; break;
         case RMTouchStationary: phaseString = @"Stationary"; break;
@@ -294,7 +296,8 @@
 - (void)sendEvent:(NSEvent *)theEvent phase:(RMTouchPhase)phase {
     NSPoint loc = theEvent.locationInWindow;
     float locScale = frame.height/owner.imageView.frame.size.height;
-    struct _rmevent event = { phase, loc.x*locScale,
+    struct _rmevent event = {
+        [NSDate timeIntervalSinceReferenceDate], phase, loc.x*locScale,
         (owner.imageView.frame.size.height-loc.y)*locScale };
 
     [self writeEvent:&event];
