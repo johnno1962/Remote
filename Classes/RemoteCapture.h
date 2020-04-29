@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RemoteCapture.h#66 $
+//  $Id: //depot/Remote/Classes/RemoteCapture.h#75 $
 //  
 
 #import <sys/sysctl.h>
@@ -27,9 +27,9 @@
 #define REMOTE_APPNAME "Remote"
 #endif
 #define REMOTE_MAGIC -141414141
-#define REMOTE_MINDIFF (3*sizeof(rmencoded_t))
+#define REMOTE_MINDIFF (4*sizeof(rmencoded_t))
 #define REMOTE_COMPRESSED_OFFSET 1000000000
-#define REMOTE_VERSION 2
+#define REMOTE_VERSION 3
 
 #ifdef DEBUG
 #define RMLog NSLog
@@ -220,7 +220,7 @@ static NSSet *currentTouches;
         int bufferSize = bytesPerRow * (int)size.height;
         cg = CGBitmapContextCreate(NULL, size.width, size.height,
                                    bitsPerComponent, bytesPerRow, CGColorSpaceCreateDeviceRGB(),
-                                   (CGBitmapInfo)kCGImageAlphaNoneSkipFirst);
+                                   (CGBitmapInfo)kCGImageAlphaPremultipliedFirst);
         buffer = (rmpixel_t *)CGBitmapContextGetData(cg);
         buffend = (rmpixel_t *)((char *)buffer + bufferSize);
         if (remoteLegacy) {
@@ -238,7 +238,9 @@ static NSSet *currentTouches;
     rmencoded_t *tmp = (rmencoded_t *)malloc(tmpsize*sizeof *tmp), *end = tmp + tmpsize;
 
     rmencoded_t *out = tmp, count = 0, expectedDiff = 0, check = 0;
-    for (rmpixel_t *curr = buffer, *prev = prevbuff ? prevbuff->buffer : NULL ;
+    *out++ = prevbuff == nil;
+
+    for (const rmpixel_t *curr = buffer, *prev = prevbuff ? prevbuff->buffer : NULL ;
              curr < buffend ; check += *curr, curr++) {
         rmpixel_t ref = (prev ? *prev++ : 0), diff = *curr - ref - expectedDiff;
         if (!diff && curr != buffer)
@@ -372,15 +374,18 @@ static CGSize bufferSize;
     dispatch_once(&once, ^{
         UIWindowLayer = objc_getClass("UIWindowLayer");
 #if 01
-        method_exchangeImplementations(class_getInstanceMethod(objc_getClass("CALayer"), @selector(_copyRenderLayer:layerFlags:commitFlags:)),
-                                       class_getInstanceMethod([NSObject class], @selector(in_copyRenderLayer:layerFlags:commitFlags:)));
+        method_exchangeImplementations(
+            class_getInstanceMethod([CALayer class],@selector(_copyRenderLayer:layerFlags:commitFlags:)),
+            class_getInstanceMethod([CALayer class], @selector(in_copyRenderLayer:layerFlags:commitFlags:)));
 #else
-        method_exchangeImplementations(class_getInstanceMethod(objc_getClass("CALayer"), @selector(_didCommitLayer:)),
-                                       class_getInstanceMethod([NSObject class], @selector(in_didCommitLayer:)));
+        method_exchangeImplementations(
+            class_getInstanceMethod([CALayer class], @selector(_didCommitLayer:)),
+            class_getInstanceMethod([CALayer class], @selector(in_didCommitLayer:)));
 #endif
 
-        method_exchangeImplementations(class_getInstanceMethod([UIApplication class], @selector(sendEvent:)),
-                                       class_getInstanceMethod([UIApplication class], @selector(in_sendEvent:)));
+        method_exchangeImplementations(
+            class_getInstanceMethod([UIApplication class], @selector(sendEvent:)),
+            class_getInstanceMethod([UIApplication class], @selector(in_sendEvent:)));
     });
 
     device.version = REMOTE_VERSION;
@@ -412,7 +417,7 @@ static CGSize bufferSize;
     [self performSelectorOnMainThread:@selector(capture:) withObject:nil waitUntilDone:NO];
 }
 
-static int skipEcho, pending;
+static int skipEcho;
 static BOOL capturing, displayedKeyboard;
 static NSTimeInterval mostRecentScreenUpdate;
 
@@ -420,11 +425,12 @@ static NSTimeInterval mostRecentScreenUpdate;
 //    RMDebug(@"capture: %f %f", timestamp.doubleValue, mostRecentScreenUpdate);
     if (timestamp.doubleValue < mostRecentScreenUpdate)
         return;
-    UIScreen *screen = screens[0];
-    CGRect bounds = screen.bounds;
+    UIScreen *screen = [UIScreen mainScreen];
+    CGRect screenBounds = screen.bounds;
+    CGSize screenSize = screenBounds.size;
     CGFloat imageScale = device.isIPad || device.scale == 3. ? 1. : screen.scale;
     __block struct _rmframe frame = { [NSDate timeIntervalSinceReferenceDate],
-        (float)bounds.size.width, (float)bounds.size.height, (float)imageScale, 0 };
+        (float)screenSize.width, (float)screenSize.height, (float)imageScale, 0 };
 
     static NSArray *buffers;
     static int frameno;
@@ -433,12 +439,13 @@ static NSTimeInterval mostRecentScreenUpdate;
         buffers = nil;
         buffers = @[[[RemoteCapture alloc] initFrame:&frame],
                     [[RemoteCapture alloc] initFrame:&frame]];
-        bufferSize = bounds.size;
+        bufferSize = screenSize;
         frameno = 0;
     }
 
-    RemoteCapture *buffer = buffers[frameno+1&1];
+    RemoteCapture *buffer = buffers[frameno++&1];
     RemoteCapture *prevbuff = buffers[frameno&1];
+    UIImage *screenshot;
 
 //    memset(buffer->buffer, 128, (char *)buffer->buffend - (char *)buffer->buffer);
 
@@ -470,7 +477,7 @@ static NSTimeInterval mostRecentScreenUpdate;
         RMDebug(@"CAPTURE1");
         UIGraphicsBeginImageContextWithOptions(screenSize, YES, 0);
         [snapshotView drawViewHierarchyInRect:snapshotView.bounds afterScreenUpdates:NO];
-        UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+        screenshot = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
         BOOL displayingKeyboard = [[UIApplication sharedApplication].windows.lastObject
                                    isKindOfClass:objc_getClass("UIRemoteKeyboardWindow")];
@@ -483,65 +490,65 @@ static NSTimeInterval mostRecentScreenUpdate;
 //        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
         UIGraphicsBeginImageContext(screenSize);
         for (UIWindow *window in [UIApplication sharedApplication].windows)
-            [window
-             drawViewHierarchyInRect:mainScreen.bounds afterScreenUpdates:NO];
-        UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+            if (!window.isHidden)
+                [window drawViewHierarchyInRect:mainScreen.bounds afterScreenUpdates:NO];
+        screenshot = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
-        BOOL displayingKeyboard = [[UIApplication sharedApplication].windows.lastObject
-                                   isKindOfClass:objc_getClass("UIRemoteKeyboardWindow")];
-        if (displayingKeyboard)
-            displayedKeyboard = TRUE;
-        skipEcho = displayedKeyboard ? displayingKeyboard ? 1 : 1 : 1;
+        skipEcho = 0;
 #endif
         RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
-        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), image.CGImage);
         capturing = FALSE;
-
-        BOOL emptyImage = TRUE;
-        for (rmpixel_t *curr = buffer->buffer; curr < buffer->buffend; curr++)
-            if (curr[0] & 0xffffff00) {
-                emptyImage = FALSE;
-                break;
-            }
-        if (emptyImage) {
-            [self performSelector:@selector(capture:) withObject:timestamp afterDelay:0.1];
-            return;
-        }
     }
 
-    pending = 0;
-    unsigned thisFrameno = ++frameno;
-
     dispatch_async(writeQueue, ^{
-        if (thisFrameno < frameno)
-            return;
         if (timestamp.doubleValue < mostRecentScreenUpdate) {
             frameno--;
             return;
         }
-        NSData *out = [buffer subtractAndEncode:prevbuff];
-        frame.length = (unsigned)out.length;
-        if (frame.length <= REMOTE_MINDIFF)
+
+        if (screenshot)
+            CGContextDrawImage(buffer->cg, CGRectMake(0, 0,
+                            screenSize.width, screenSize.height), screenshot.CGImage);
+
+        BOOL blankImage = TRUE;
+        for (const rmpixel_t *curr = buffer->buffer; curr < buffer->buffend; curr++)
+            if (*curr & 0xffffff00) {
+                blankImage = FALSE;
+                break;
+            }
+        if (blankImage) {
+            [self performSelector:@selector(delayedFlush) withObject:nil afterDelay:0.1];
+            frameno--;
             return;
+        }
+
+        NSData *encoded = [buffer subtractAndEncode:prevbuff];
+        NSData *keyframe = [buffer subtractAndEncode:nil];
+        if (keyframe.length < encoded.length)
+            encoded = keyframe;
+
+        frame.length = (unsigned)encoded.length;
+        if (frame.length <= REMOTE_MINDIFF) {
+            frameno--;
+            return;
+        }
 
 #ifdef REMOTE_COMPRESSION
-        struct _rmcompress *buff = malloc(sizeof buff->bytes+out.length+100);
-        uLongf clen = buff->bytes = (unsigned)out.length;
-        if (compress2(buff->data, &clen,
-                       (const Bytef *)out.bytes, buff->bytes, Z_BEST_SPEED) == Z_OK && clen < out.length) {
-            out = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
-            RMLog(@"Remote: Delta image %d/%d %.1f%%", (int)out.length, frame.length, 100.*out.length/frame.length);
-            frame.length = REMOTE_COMPRESSED_OFFSET + (int)out.length;
+        struct _rmcompress *buff = malloc(sizeof buff->bytes+encoded.length+100);
+        uLongf clen = buff->bytes = (unsigned)encoded.length;
+        if (compress2(buff->data, &clen, (const Bytef *)encoded.bytes,
+                      buff->bytes, Z_BEST_SPEED) == Z_OK && clen < encoded.length) {
+            encoded = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
+            RMLog(@"Remote: Delta image %d/%d %.1f%%", (int)encoded.length, frame.length, 100.*encoded.length/frame.length);
+            frame.length = REMOTE_COMPRESSED_OFFSET + (int)encoded.length;
         }
 #endif
         if (write(connectionSocket, &frame, sizeof frame) != sizeof frame)
             NSLog(@"RemoteCapture: Could not write bounds");
-        else if (write(connectionSocket, out.bytes, out.length) != out.length)
+        else if (write(connectionSocket, encoded.bytes, encoded.length) != encoded.length)
             NSLog(@"RemoteCapture: Could not write out");
     });
 }
-
-//static UITouchesEvent *realEvent;
 
 + (void)processEvents {
     FILE *eventStream = fdopen(connectionSocket, "r");
@@ -608,6 +615,17 @@ static NSTimeInterval mostRecentScreenUpdate;
                     [currentTouch2 _setMaximumPossiblePressure:0.0];
                     [currentTouch2 _setEdgeType:0];
                     [currentTouch2 _setEdgeAim:0];
+
+                    //[self _setIsFirstTouchForView:1];
+                    [currentTouch2 setView:currentTarget];
+                    [currentTouch2 _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
+                    [currentTouch2 _setPressure:0.0 resetPrevious:true];
+                    //[UITouch _updateWithChildEvent:0x600001ff81c0];
+                    [currentTouch2 setIsTap:true];
+                    [currentTouch2 setTapCount:1];
+                    [currentTouch2 _setIsFirstTouchForView:true];
+
+                    [currentTouch2 _setLocationInWindow:location resetPrevious:YES];
 
                 case RMTouchBegan:
                     currentTarget = nil;
@@ -745,25 +763,36 @@ static NSTimeInterval mostRecentScreenUpdate;
     }
 }
 
-+ (void)capture0:(NSNumber *)timestamp {
-//    if (!pending++)
-        dispatch_async(writeQueue, ^{
-            [RemoteCapture performSelectorOnMainThread:@selector(capture:) withObject:timestamp waitUntilDone:NO];
-        });
++ (void)synchronisedCapture:(NSNumber *)timestamp {
+    dispatch_async(writeQueue, ^{
+        [RemoteCapture performSelectorOnMainThread:@selector(capture:) withObject:timestamp waitUntilDone:NO];
+    });
+}
+
++ (void)delayedFlush {
+    RMDebug(@"delayedFlush");
+    [RemoteCapture performSelectorOnMainThread:@selector(synchronisedCapture:)
+                                    withObject:
+     [NSNumber numberWithDouble:mostRecentScreenUpdate =
+      [NSDate timeIntervalSinceReferenceDate]] waitUntilDone:NO];
 }
 
 @end
 
-@implementation NSObject(RemoteCapture)
+@implementation CALayer(RemoteCapture)
 
 - (void *)in_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2 {
     void *out = [self in_copyRenderLayer:a0 layerFlags:a1 commitFlags:a2];
     RMDebug(@"in_copyRenderLayer: %d %d %@ %lu", capturing, skipEcho, self,
             (unsigned long)[UIApplication sharedApplication].windows.count);
     if (connectionSocket && !capturing && self.class == UIWindowLayer && --skipEcho<0) {
-        [RemoteCapture performSelectorOnMainThread:@selector(capture0:)
+        [RemoteCapture performSelectorOnMainThread:@selector(synchronisedCapture:)
             withObject:[NSNumber numberWithDouble:mostRecentScreenUpdate =
                         [NSDate timeIntervalSinceReferenceDate]] waitUntilDone:NO];
+    }
+    else {
+        [RemoteCapture cancelPreviousPerformRequestsWithTarget:RemoteCapture.class];
+        [RemoteCapture performSelector:@selector(delayedFlush) withObject:nil afterDelay:0.8];
     }
     return out;
 }
@@ -773,7 +802,7 @@ static NSTimeInterval mostRecentScreenUpdate;
     RMDebug(@"in_didCommitLayer: %d %d %@ %lu", capturing, skipEcho, self,
             (unsigned long)[UIApplication sharedApplication].windows.count);
     if (connectionSocket && !capturing && self.class == UIWindowLayer && --skipEcho<0)
-        [RemoteCapture performSelectorOnMainThread:@selector(capture0:)
+        [RemoteCapture performSelectorOnMainThread:@selector(synchronisedCapture:)
             withObject:[NSNumber numberWithDouble:mostRecentScreenUpdate =
                         [NSDate timeIntervalSinceReferenceDate]] waitUntilDone:NO];
 }
@@ -785,12 +814,6 @@ static NSTimeInterval mostRecentScreenUpdate;
 - (void)in_sendEvent:(UIEvent *)anEvent {
     [self in_sendEvent:anEvent];
     NSSet *touches = anEvent.allTouches;
-
-//    if ([anEvent isKindOfClass:objc_getClass("UITouchesEvent")]) {
-////        realEvent = (UITouchesEvent *)anEvent;
-//    //    if (!currentTouch)
-////            currentTouch = [touches anyObject];
-//    }
 
 #if 0
     RMLog(@"%@", anEvent);

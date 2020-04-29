@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMDeviceController.m#32 $
+//  $Id: //depot/Remote/Classes/RMDeviceController.m#34 $
 //
 
 #define REMOTE_IMPL
@@ -24,6 +24,8 @@
 - (void)recover:(const void *)tmp against:(RemoteCapture *)prevbuff {
 
     register rmencoded_t expectedDiff = 0, check = 0, *data = (rmencoded_t *)tmp;
+    BOOL keyframe = *data++;
+
     for (register rmpixel_t
          *curr = self->buffer,
          *prev = prevbuff->buffer;
@@ -33,12 +35,13 @@
         unsigned count = diff & 0xff;
         diff &= 0xffffff00;
 
-        check += *curr++ = (*prev++ + diff + expectedDiff) | 0x000000ff;
+        check += *curr++ = ((keyframe ? 0 : *prev++) + diff + expectedDiff) | 0x000000ff;
         if (count) {
             if (count == 0xff)
                 count = *data++;
             for (register rmpixel_t *end = MIN(curr + count, self->buffend) ; curr < end ;)
-                check += *curr++ = (*prev++ + diff + expectedDiff) | 0x000000ff;
+                check += *curr++ = ((keyframe ? 0 : *prev++) +
+                                    diff + expectedDiff) | 0x000000ff;
         }
 
         expectedDiff = curr[-1] - prev[-1];
