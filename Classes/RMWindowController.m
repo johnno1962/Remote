@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMWindowController.m#30 $
+//  $Id: //depot/Remote/Classes/RMWindowController.m#31 $
 //
 
 #import "RMWindowController.h"
@@ -32,6 +32,7 @@
     IBOutlet RMImageView *imageView;
     IBOutlet NSDrawer *drawer;
     IBOutlet NSView *logView;
+    IBOutlet NSProgressIndicator *spinner;
 
     NSTimeInterval lastEvent;
     CGFloat aspect;
@@ -188,6 +189,15 @@ static int serverSocket;
         image = [[NSImage alloc] initWithCGImage:img size:NSMakeSize(framep->width,framep->height)];
     [manager performSelectorOnMainThread:@selector(recordImage:) withObject:image waitUntilDone:NO];
     CGImageRelease(img);
+}
+
+- (void)loading:(RMDeviceController *)device {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (device)
+            [spinner startAnimation:device];
+        else
+            [spinner stopAnimation:device];
+    });
 }
 
 - (void)setDevice:(RMDeviceController *)device {

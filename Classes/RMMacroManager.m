@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMMacroManager.m#17 $
+//  $Id: //depot/Remote/Classes/RMMacroManager.m#19 $
 //
 
 #import "RMMacroManager.h"
@@ -205,7 +205,9 @@ static NSString *movieTmp;
 - (IBAction)record:sender {
     if (!movieTmp)
         movieTmp = [NSTemporaryDirectory()
-                    stringByAppendingPathComponent:@"remote.m4v"];
+                    stringByAppendingPathComponent:@"remote.mp4"];
+    [[NSFileManager defaultManager]
+     removeItemAtPath:movieTmp error:NULL];
 #ifndef _XCODE_8
     movie = [[QTMovie alloc] initToWritableFile:movieTmp error:NULL];
     lastImageTime = [NSDate timeIntervalSinceReferenceDate];
@@ -235,20 +237,29 @@ static NSString *movieTmp;
 #endif
     movie = nil;
 
-    NSSavePanel *saver = [NSSavePanel savePanel];
-    [saver setTitle:@"Save Recorded Movie"];
-    [saver setExtensionHidden:NO];
-    [saver setNameFieldStringValue:@"remote.m4v"];
-    if ([saver runModal] != NSModalResponseOK)
-        return;
+    NSString *movieFile = movieTmp;
+    [[NSWorkspace sharedWorkspace]
+     openURL:[[NSURL alloc] initFileURLWithPath:movieFile]];
 
-    NSError *err = nil;
-    NSFileManager *fm = [NSFileManager defaultManager];
-    [fm removeItemAtPath:saver.URL.path error:&err];
-    if ([fm moveItemAtPath:movieTmp toPath:saver.URL.path error:&err])
-        [[NSWorkspace sharedWorkspace] openURL:saver.URL];
-    else
-        [[owner class] error:@"Unable to save movie: %@", err];
+    @try {
+        NSSavePanel *saver = [NSSavePanel savePanel];
+        [saver setTitle:@"Save Recorded Movie"];
+        [saver setExtensionHidden:NO];
+        [saver setNameFieldStringValue:@"remote.m4v"];
+        if ([saver runModal] != NSModalResponseOK)
+            return;
+
+        movieFile = saver.URL.path;
+
+        NSError *err = nil;
+        NSFileManager *fm = [NSFileManager defaultManager];
+        [fm removeItemAtPath:saver.URL.path error:&err];
+        if (![fm moveItemAtPath:movieTmp toPath:movieFile error:&err])
+            [[owner class] error:@"Unable to save movie: %@", err];
+    }
+    @catch (NSException *err) {
+        [[owner class] error:@"Exception saving movie: %@", err];
+    }
 }
 
 - (void)recordImage:(NSImage *)image {

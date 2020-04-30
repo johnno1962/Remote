@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMDeviceController.m#34 $
+//  $Id: //depot/Remote/Classes/RMDeviceController.m#35 $
 //
 
 #define REMOTE_IMPL
@@ -161,8 +161,12 @@
             tmpsize = frame.length;
         }
 
-        if (fread(tmp, 1, frame.length, renderStream) != frame.length)
+        [owner loading:self];
+        if (fread(tmp, 1, frame.length, renderStream) != frame.length) {
+            [owner loading:nil];
             break;
+        }
+        [owner loading:nil];
 
         if (isCompressed) {
             struct _rmcompress *buff = (struct _rmcompress *)tmp;

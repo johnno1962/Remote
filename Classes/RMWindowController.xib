@@ -12,6 +12,7 @@
                 <outlet property="imageView" destination="nkY-yy-lwy" id="b7t-Zl-aDP"/>
                 <outlet property="logView" destination="9NF-Jn-Vuq" id="rEM-zL-XjD"/>
                 <outlet property="manager" destination="uwN-HT-8jm" id="ohJ-IU-asw"/>
+                <outlet property="spinner" destination="jUQ-CD-NMr" id="tKN-jJ-thp"/>
                 <outlet property="window" destination="sFo-vE-eKG" id="tKN-jJ-thh"/>
             </connections>
         </customObject>
@@ -34,6 +35,10 @@
                             <outlet property="owner" destination="-2" id="dAL-19-4T7"/>
                         </connections>
                     </imageView>
+                    <progressIndicator wantsLayer="YES" fixedFrame="YES" maxValue="100" displayedWhenStopped="NO" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="jUQ-CD-NMr">
+                        <rect key="frame" x="119" y="192" width="16" height="16"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
+                    </progressIndicator>
                 </subviews>
             </view>
             <connections>
