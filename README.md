@@ -89,3 +89,10 @@ Please note: for some reason it takes about a minute before Xcode will accept re
 connections on it's server socket (firewall complications?). After restarting Xcode
 you may need to wait a while before being able to use the Remote plugin from a device.
 
+### Thanks
+
+AVFoundation code for video capture adapted from:
+[https://github.com/acj/TimeLapseBuilder-Swift](https://github.com/acj/TimeLapseBuilder-Swift)
+
+MIT license. Please see the LICENSE file for the particulars.
+

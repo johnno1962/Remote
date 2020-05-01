@@ -11,6 +11,7 @@
 		BB25264C1F65D1A400898347 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = BB25264B1F65D1A300898347 /* LICENSE */; };
 		BB5CF63A1912DCC50052E10B /* RMPluginController.m in Sources */ = {isa = PBXBuildFile; fileRef = BB5CF6391912DCC50052E10B /* RMPluginController.m */; };
 		BB61FC2A1A629AC300833642 /* QTKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB61FC291A629AC300833642 /* QTKit.framework */; };
+		BB79FC74245C8EE900A4B4CB /* TimeLapseBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB79FC73245C8EE900A4B4CB /* TimeLapseBuilder.swift */; };
 		BB82F0CD1913D15F0015AE7A /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = BB82F0CC1913D15F0015AE7A /* README.md */; };
 		BBBD4F081A4AE1FE009969E1 /* RMImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = BBBD4F011A4AE1FE009969E1 /* RMImageView.m */; };
 		BBBD4F091A4AE1FE009969E1 /* RMMacroManager.m in Sources */ = {isa = PBXBuildFile; fileRef = BBBD4F031A4AE1FE009969E1 /* RMMacroManager.m */; };
@@ -47,6 +48,8 @@
 		BB5CF6381912DCC50052E10B /* RMPluginController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMPluginController.h; sourceTree = "<group>"; };
 		BB5CF6391912DCC50052E10B /* RMPluginController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RMPluginController.m; sourceTree = "<group>"; };
 		BB61FC291A629AC300833642 /* QTKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QTKit.framework; path = System/Library/Frameworks/QTKit.framework; sourceTree = SDKROOT; };
+		BB79FC72245C8EE500A4B4CB /* Remote-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Remote-Bridging-Header.h"; sourceTree = "<group>"; };
+		BB79FC73245C8EE900A4B4CB /* TimeLapseBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TimeLapseBuilder.swift; sourceTree = "<group>"; };
 		BB82F0CC1913D15F0015AE7A /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RemoteBundle.xcodeproj; path = RemoteBundle/RemoteBundle.xcodeproj; sourceTree = "<group>"; };
 		BBBD4EFC1A4AE1FE009969E1 /* RemoteCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RemoteCapture.h; sourceTree = "<group>"; };
@@ -131,6 +134,7 @@
 		7F411B0C15FABAC6002F77B6 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
+				BB79FC73245C8EE900A4B4CB /* TimeLapseBuilder.swift */,
 				BB5CF6381912DCC50052E10B /* RMPluginController.h */,
 				BB5CF6391912DCC50052E10B /* RMPluginController.m */,
 				BBF5D8E21912DFCA0037CE2E /* RMPluginController.xib */,
@@ -145,6 +149,7 @@
 				BBBD4F011A4AE1FE009969E1 /* RMImageView.m */,
 				BBBD4EFC1A4AE1FE009969E1 /* RemoteCapture.h */,
 				BBBD4EFD1A4AE1FE009969E1 /* RemoteHeaders.h */,
+				BB79FC72245C8EE500A4B4CB /* Remote-Bridging-Header.h */,
 			);
 			path = Classes;
 			sourceTree = "<group>";
@@ -186,6 +191,11 @@
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 0820;
+				TargetAttributes = {
+					8D5B49AC048680CD000E48DA = {
+						LastSwiftMigration = 1140;
+					};
+				};
 			};
 			buildConfigurationList = 1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Remote" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -264,6 +274,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB79FC74245C8EE900A4B4CB /* TimeLapseBuilder.swift in Sources */,
 				BBBD4F081A4AE1FE009969E1 /* RMImageView.m in Sources */,
 				BBC38E511A5BCD4900AD6F80 /* RMDeviceController.m in Sources */,
 				BBBD4F0A1A4AE1FE009969E1 /* RMWindowController.m in Sources */,
@@ -279,6 +290,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "";
@@ -300,9 +312,13 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.johnholdsworth.Remote;
 				PRODUCT_NAME = Remote;
 				STRIP_INSTALLED_PRODUCT = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Classes/Remote-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
 				WRAPPER_EXTENSION = xcplugin;
 			};
 			name = Debug;

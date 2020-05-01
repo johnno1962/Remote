@@ -6,21 +6,15 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMMacroManager.m#19 $
+//  $Id: //depot/Remote/Classes/RMMacroManager.m#21 $
 //
 
 #import "RMMacroManager.h"
 #import <WebKit/WebKit.h>
 
-#if __has_include(<QTKit/QTKit.h>)
-#import <QTKit/QTKit.h>
-#else
-#warning *** Recording functionality not available ***
-#define _XCODE_8
-#endif
-
 #import "RMWindowController.h"
 #import "RMPluginController.h"
+#import "InjectionIII-Swift.h"
 
 @implementation RMMacroManager {
     IBOutlet __weak RMWindowController *owner;
@@ -33,9 +27,10 @@
     IBOutlet __weak NSImageView *snapshot;
 
     IBOutlet __weak NSButton *bRecord, *bPause, *bStop;
-    NSTimeInterval lastImageTime;
+    NSMutableArray<NSImage *> *images;
+    NSMutableArray<NSNumber *> *times;
+    NSTimeInterval lastImageTime, recordedTime;
     NSImage *lastImage;
-    QTMovie *movie;
 }
 
 - (void)awakeFromNib {
@@ -200,25 +195,14 @@
     [owner reset];
 }
 
-static NSString *movieTmp;
-
 - (IBAction)record:sender {
-    if (!movieTmp)
-        movieTmp = [NSTemporaryDirectory()
-                    stringByAppendingPathComponent:@"remote.mp4"];
-    [[NSFileManager defaultManager]
-     removeItemAtPath:movieTmp error:NULL];
-#ifndef _XCODE_8
-    movie = [[QTMovie alloc] initToWritableFile:movieTmp error:NULL];
     lastImageTime = [NSDate timeIntervalSinceReferenceDate];
+    images = [NSMutableArray new];
+    times = [NSMutableArray new];
+    recordedTime = 0.0;
+    [self recordImage:lastImage];
     bRecord.enabled = FALSE;
     bStop.enabled = TRUE;
-#else
-    [[NSAlert alertWithMessageText:@"Remote Plugin:"
-                     defaultButton:@"OK" alternateButton:nil otherButton:nil
-         informativeTextWithFormat:@"QuickTime framework has not been available since Xcode 8."]
-     runModal];
-#endif
 }
 
 - (IBAction)pause:sender {
@@ -231,48 +215,62 @@ static NSString *movieTmp;
 - (IBAction)stop:sender {
     bRecord.enabled = TRUE;
     bStop.enabled = FALSE;
-    [self recordImage:nil];
-#ifndef _XCODE_8
-    [movie updateMovieFile];
-#endif
-    movie = nil;
+    [self recordImage:lastImage];
 
-    NSString *movieFile = movieTmp;
-    [[NSWorkspace sharedWorkspace]
-     openURL:[[NSURL alloc] initFileURLWithPath:movieFile]];
+    NSString *movieTmp = [NSTemporaryDirectory()
+        stringByAppendingPathComponent:@"remote.mov"];
+    [[NSFileManager defaultManager]
+     removeItemAtPath:movieTmp error:NULL];
 
-    @try {
-        NSSavePanel *saver = [NSSavePanel savePanel];
-        [saver setTitle:@"Save Recorded Movie"];
-        [saver setExtensionHidden:NO];
-        [saver setNameFieldStringValue:@"remote.m4v"];
-        if ([saver runModal] != NSModalResponseOK)
-            return;
+    [[[TimeLapseBuilder alloc]
+         initWithImages:images times:times
+         into:[NSURL fileURLWithPath:movieTmp]]
+     build:^(NSProgress *progress){
+                NSLog(@"Progress: %@", progress);
+            }
+    success:^(NSURL * _Nonnull url){
+                NSLog(@"Success: %@", url);
+                [[NSWorkspace sharedWorkspace]
+                 openURL:[[NSURL alloc]
+                          initFileURLWithPath:url.path]];
+                images = nil;
+                times = nil;
+            }
+    failure:^(NSError * _Nonnull err){
+                NSLog(@"Error: %@", err);
+            }];
 
-        movieFile = saver.URL.path;
-
-        NSError *err = nil;
-        NSFileManager *fm = [NSFileManager defaultManager];
-        [fm removeItemAtPath:saver.URL.path error:&err];
-        if (![fm moveItemAtPath:movieTmp toPath:movieFile error:&err])
-            [[owner class] error:@"Unable to save movie: %@", err];
-    }
-    @catch (NSException *err) {
-        [[owner class] error:@"Exception saving movie: %@", err];
-    }
+//    NSString *movieFile = movieTmp;
+//    [[NSWorkspace sharedWorkspace]
+//     openURL:[[NSURL alloc] initFileURLWithPath:movieFile]];
+//
+//    @try {
+//        NSSavePanel *saver = [NSSavePanel savePanel];
+//        [saver setTitle:@"Save Recorded Movie"];
+//        [saver setExtensionHidden:NO];
+//        [saver setNameFieldStringValue:@"remote.mp4"];
+//        if ([saver runModal] != NSModalResponseOK)
+//            return;
+//
+//        movieFile = saver.URL.path;
+//
+//        NSError *err = nil;
+//        NSFileManager *fm = [NSFileManager defaultManager];
+//        [fm removeItemAtPath:saver.URL.path error:&err];
+//        if (![fm moveItemAtPath:movieTmp toPath:movieFile error:&err])
+//            [[owner class] error:@"Unable to save movie: %@", err];
+//    }
+//    @catch (NSException *err) {
+//        [[owner class] error:@"Exception saving movie: %@", err];
+//    }
 }
 
 - (void)recordImage:(NSImage *)image {
     NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
-    if (lastImage && movie && (!bPause.state || !image)) {
-        long timeScale = 600;
-        long long timeValue = (now-lastImageTime)*timeScale;
-
-#ifndef _XCODE_8
-        [movie addImage:lastImage forDuration:QTMakeTime(timeValue, timeScale)
-         withAttributes:@{QTAddImageCodecType: @"mp4v",
-                          QTAddImageCodecQuality: [NSNumber numberWithLong:codecHighQuality]}];
-#endif
+    if (lastImage && (!bPause.state || !image)) {
+        recordedTime += now - lastImageTime;
+        [images addObject:lastImage];
+        [times addObject:[NSNumber numberWithDouble:recordedTime]];
     }
 
     lastImageTime = now;
