@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMWindowController.m#31 $
+//  $Id: //depot/Remote/Classes/RMWindowController.m#33 $
 //
 
 #import "RMWindowController.h"
@@ -90,11 +90,16 @@ static int serverSocket;
         [self performSelectorInBackground:@selector(backgroundConnectionService) withObject:nil];
 }
 
++ (void)stopServer {
+    close(serverSocket);
+    serverSocket = 0;
+}
+
 // accept connection from serverSocket
 + (void)backgroundConnectionService {
 
     NSLog(@"RMWindowController: Waiting for connections...");
-    while (TRUE) {
+    while (serverSocket) {
         struct sockaddr_in clientAddr;
         socklen_t addrLen = sizeof clientAddr;
 
@@ -191,12 +196,12 @@ static int serverSocket;
     CGImageRelease(img);
 }
 
-- (void)loading:(RMDeviceController *)device {
+- (void)loading:(BOOL)active {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (device)
-            [spinner startAnimation:device];
+        if (active)
+            [spinner startAnimation:self];
         else
-            [spinner stopAnimation:device];
+            [spinner stopAnimation:self];
     });
 }
 

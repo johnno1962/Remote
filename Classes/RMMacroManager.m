@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMMacroManager.m#21 $
+//  $Id: //depot/Remote/Classes/RMMacroManager.m#22 $
 //
 
 #import "RMMacroManager.h"
@@ -219,50 +219,24 @@
 
     NSString *movieTmp = [NSTemporaryDirectory()
         stringByAppendingPathComponent:@"remote.mov"];
-    [[NSFileManager defaultManager]
-     removeItemAtPath:movieTmp error:NULL];
 
     [[[TimeLapseBuilder alloc]
-         initWithImages:images times:times
-         into:[NSURL fileURLWithPath:movieTmp]]
-     build:^(NSProgress *progress){
-                NSLog(@"Progress: %@", progress);
-            }
-    success:^(NSURL * _Nonnull url){
-                NSLog(@"Success: %@", url);
-                [[NSWorkspace sharedWorkspace]
-                 openURL:[[NSURL alloc]
-                          initFileURLWithPath:url.path]];
-                images = nil;
-                times = nil;
-            }
-    failure:^(NSError * _Nonnull err){
-                NSLog(@"Error: %@", err);
-            }];
-
-//    NSString *movieFile = movieTmp;
-//    [[NSWorkspace sharedWorkspace]
-//     openURL:[[NSURL alloc] initFileURLWithPath:movieFile]];
-//
-//    @try {
-//        NSSavePanel *saver = [NSSavePanel savePanel];
-//        [saver setTitle:@"Save Recorded Movie"];
-//        [saver setExtensionHidden:NO];
-//        [saver setNameFieldStringValue:@"remote.mp4"];
-//        if ([saver runModal] != NSModalResponseOK)
-//            return;
-//
-//        movieFile = saver.URL.path;
-//
-//        NSError *err = nil;
-//        NSFileManager *fm = [NSFileManager defaultManager];
-//        [fm removeItemAtPath:saver.URL.path error:&err];
-//        if (![fm moveItemAtPath:movieTmp toPath:movieFile error:&err])
-//            [[owner class] error:@"Unable to save movie: %@", err];
-//    }
-//    @catch (NSException *err) {
-//        [[owner class] error:@"Exception saving movie: %@", err];
-//    }
+         initWithImages:images times:times]
+        build:[NSURL fileURLWithPath:movieTmp]
+     progress:^(NSProgress *progress){
+            NSLog(@"Progress: %@", progress);
+        }
+      success:^(NSURL * _Nonnull url){
+            NSLog(@"Success: %@", url);
+            [[NSWorkspace sharedWorkspace]
+             openURL:[[NSURL alloc]
+                      initFileURLWithPath:url.path]];
+            images = nil;
+            times = nil;
+        }
+      failure:^(NSError * _Nonnull err){
+        [[owner class] error:@"Error: %@", err];
+        }];
 }
 
 - (void)recordImage:(NSImage *)image {

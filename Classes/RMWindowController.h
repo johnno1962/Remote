@@ -20,6 +20,7 @@
 + (void)startServer:(NSMenuItem *)macroMenu;
 + (void)startServer:(NSMenuItem *)macroMenu port:(in_port_t)port;
 + (NSArray *)serverAddresses;
++ (void)stopServer;
 
 - (void)replayMacro:(NSString *)name;
 - (void)logSet:(NSString *)macroHTML;

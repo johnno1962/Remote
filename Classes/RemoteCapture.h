@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RemoteCapture.h#78 $
+//  $Id: //depot/Remote/Classes/RemoteCapture.h#79 $
 //  
 
 #import <sys/sysctl.h>
@@ -418,140 +418,6 @@ static CGSize bufferSize;
     [self performSelectorOnMainThread:@selector(capture:) withObject:nil waitUntilDone:NO];
 }
 
-static int skipEcho;
-static BOOL capturing;
-static NSTimeInterval mostRecentScreenUpdate;
-
-+ (void)capture:(NSNumber *)timestamp {
-//    RMDebug(@"capture: %f %f", timestamp.doubleValue, mostRecentScreenUpdate);
-    if (timestamp.doubleValue < mostRecentScreenUpdate)
-        return;
-    UIScreen *screen = [UIScreen mainScreen];
-    CGRect screenBounds = screen.bounds;
-    CGSize screenSize = screenBounds.size;
-    CGFloat imageScale = device.isIPad || device.scale == 3. ? 1. : screen.scale;
-    __block struct _rmframe frame = {[NSDate timeIntervalSinceReferenceDate],
-        (float)screenSize.width, (float)screenSize.height, (float)imageScale, 0};
-
-    static NSArray *buffers;
-    static int frameno;
-
-    if (bufferSize.width != frame.width || bufferSize.height != frame.height) {
-        buffers = nil;
-        buffers = @[[[RemoteCapture alloc] initFrame:&frame],
-                    [[RemoteCapture alloc] initFrame:&frame]];
-        bufferSize = screenSize;
-        frameno = 0;
-    }
-
-    RemoteCapture *buffer = buffers[frameno++&1];
-    RemoteCapture *prevbuff = buffers[frameno&1];
-    UIImage *screenshot;
-
-//    memset(buffer->buffer, 128, (char *)buffer->buffend - (char *)buffer->buffer);
-
-    // The various ways to capture a screenshot over the years...
-    if (remoteLegacy) {
-        RMDebug(@"CAPTURE LEGACY");
-        BOOL benchmark = FALSE;
-        for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-            NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
-#if 0
-            UIView *snap = [window snapshotViewAfterScreenUpdates:YES];
-            [snap.layer renderInContext:buffer->cg];
-#else
-            [[window layer] renderInContext:buffer->cg];
-#endif
-            if(benchmark)
-                RMLog(@"%@ %f", NSStringFromCGRect(window.bounds),
-                      [NSDate timeIntervalSinceReferenceDate]-start);
-        }
-        skipEcho = 2;
-    }
-    else {
-        capturing = TRUE;
-        RMDebug(@"CAPTURE0");
-        UIScreen *mainScreen = [UIScreen mainScreen];
-        CGSize screenSize = mainScreen.bounds.size;
-#if 00
-        UIView *snapshotView = [keyWindow snapshotViewAfterScreenUpdates:YES];
-        RMDebug(@"CAPTURE1");
-        UIGraphicsBeginImageContextWithOptions(screenSize, YES, 0);
-        [snapshotView drawViewHierarchyInRect:snapshotView.bounds afterScreenUpdates:NO];
-        screenshot = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-        BOOL displayingKeyboard = [[UIApplication sharedApplication].windows.lastObject
-                                   isKindOfClass:objc_getClass("UIRemoteKeyboardWindow")];
-        static BOOL displayedKeyboard;
-        if (displayingKeyboard)
-            displayedKeyboard = TRUE;
-        skipEcho = displayedKeyboard ? displayingKeyboard ? 10 : 8 : 6;
-#else
-//        extern CGImageRef UIGetScreenImage(void);
-//        CGImageRef screenshot = UIGetScreenImage();
-//        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
-        UIGraphicsBeginImageContext(screenSize);
-        for (UIWindow *window in [UIApplication sharedApplication].windows)
-            if (!window.isHidden)
-                [window drawViewHierarchyInRect:mainScreen.bounds afterScreenUpdates:NO];
-        screenshot = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-        skipEcho = 0;
-#endif
-        RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
-        capturing = FALSE;
-    }
-
-    dispatch_async(writeQueue, ^{
-        if (timestamp.doubleValue < mostRecentScreenUpdate) {
-            frameno--;
-            return;
-        }
-
-        if (screenshot)
-            CGContextDrawImage(buffer->cg, CGRectMake(0, 0,
-                            screenSize.width, screenSize.height), screenshot.CGImage);
-
-        BOOL blankImage = TRUE;
-        for (const rmpixel_t *curr = buffer->buffer; curr < buffer->buffend; curr++)
-            if (*curr & 0xffffff00) {
-                blankImage = FALSE;
-                break;
-            }
-        if (blankImage) {
-            [self performSelector:@selector(queueCapture) withObject:nil afterDelay:0.1];
-            frameno--;
-            return;
-        }
-
-        NSData *encoded = [buffer subtractAndEncode:prevbuff];
-        NSData *keyframe = [buffer subtractAndEncode:nil];
-        if (keyframe.length < encoded.length)
-            encoded = keyframe;
-
-        frame.length = (unsigned)encoded.length;
-        if (frame.length <= REMOTE_MINDIFF) {
-            frameno--;
-            return;
-        }
-
-#ifdef REMOTE_COMPRESSION
-        struct _rmcompress *buff = malloc(sizeof buff->bytes + encoded.length + 100);
-        uLongf clen = buff->bytes = (unsigned)encoded.length;
-        if (compress2(buff->data, &clen, (const Bytef *)encoded.bytes,
-                      buff->bytes, Z_BEST_SPEED) == Z_OK && clen < encoded.length) {
-            encoded = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
-            RMLog(@"Remote: Delta image %d/%d %.1f%%", (int)encoded.length, frame.length, 100.*encoded.length/frame.length);
-            frame.length = REMOTE_COMPRESSED_OFFSET + (int)encoded.length;
-        }
-#endif
-        if (write(connectionSocket, &frame, sizeof frame) != sizeof frame)
-            NSLog(@"RemoteCapture: Could not write bounds");
-        else if (write(connectionSocket, encoded.bytes, encoded.length) != encoded.length)
-            NSLog(@"RemoteCapture: Could not write out");
-    });
-}
-
 + (void)processEvents {
     FILE *eventStream = fdopen(connectionSocket, "r");
 
@@ -745,13 +611,13 @@ static NSTimeInterval mostRecentScreenUpdate;
                     currentTouch = nil;
                     event = nil;
                     break;
-                    
+
                 default:
                     NSLog(@"RemoteCapture: Invalid Event: %d", rpevent.phase);
             }
         });
     }
-    
+
     NSLog(@"RemoteCapture: processEvents exits");
     fclose(eventStream);
     [self shutdown];
@@ -763,6 +629,140 @@ static NSTimeInterval mostRecentScreenUpdate;
         close(connectionSocket);
         connectionSocket = 0;
     }
+}
+
+static int skipEcho;
+static BOOL capturing;
+static NSTimeInterval mostRecentScreenUpdate;
+
++ (void)capture:(NSNumber *)timestamp {
+//    RMDebug(@"capture: %f %f", timestamp.doubleValue, mostRecentScreenUpdate);
+    if (timestamp.doubleValue < mostRecentScreenUpdate)
+        return;
+    UIScreen *screen = [UIScreen mainScreen];
+    CGRect screenBounds = screen.bounds;
+    CGSize screenSize = screenBounds.size;
+    CGFloat imageScale = device.isIPad || device.scale == 3. ? 1. : screen.scale;
+    __block struct _rmframe frame = {[NSDate timeIntervalSinceReferenceDate],
+        (float)screenSize.width, (float)screenSize.height, (float)imageScale, 0};
+
+    static NSArray *buffers;
+    static int frameno;
+
+    if (bufferSize.width != frame.width || bufferSize.height != frame.height) {
+        buffers = nil;
+        buffers = @[[[RemoteCapture alloc] initFrame:&frame],
+                    [[RemoteCapture alloc] initFrame:&frame]];
+        bufferSize = screenSize;
+        frameno = 0;
+    }
+
+    RemoteCapture *buffer = buffers[frameno++&1];
+    RemoteCapture *prevbuff = buffers[frameno&1];
+    UIImage *screenshot;
+
+//    memset(buffer->buffer, 128, (char *)buffer->buffend - (char *)buffer->buffer);
+
+    // The various ways to capture a screenshot over the years...
+    if (remoteLegacy) {
+        RMDebug(@"CAPTURE LEGACY");
+        BOOL benchmark = FALSE;
+        for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+            NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
+#if 0
+            UIView *snap = [window snapshotViewAfterScreenUpdates:YES];
+            [snap.layer renderInContext:buffer->cg];
+#else
+            [[window layer] renderInContext:buffer->cg];
+#endif
+            if(benchmark)
+                RMLog(@"%@ %f", NSStringFromCGRect(window.bounds),
+                      [NSDate timeIntervalSinceReferenceDate]-start);
+        }
+        skipEcho = 2;
+    }
+    else {
+        capturing = TRUE;
+        RMDebug(@"CAPTURE0");
+        UIScreen *mainScreen = [UIScreen mainScreen];
+        CGSize screenSize = mainScreen.bounds.size;
+#if 00
+        UIView *snapshotView = [keyWindow snapshotViewAfterScreenUpdates:YES];
+        RMDebug(@"CAPTURE1");
+        UIGraphicsBeginImageContextWithOptions(screenSize, YES, 0);
+        [snapshotView drawViewHierarchyInRect:snapshotView.bounds afterScreenUpdates:NO];
+        screenshot = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+        BOOL displayingKeyboard = [[UIApplication sharedApplication].windows.lastObject
+                                   isKindOfClass:objc_getClass("UIRemoteKeyboardWindow")];
+        static BOOL displayedKeyboard;
+        if (displayingKeyboard)
+            displayedKeyboard = TRUE;
+        skipEcho = displayedKeyboard ? displayingKeyboard ? 10 : 8 : 6;
+#else
+//        extern CGImageRef UIGetScreenImage(void);
+//        CGImageRef screenshot = UIGetScreenImage();
+//        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
+        UIGraphicsBeginImageContext(screenSize);
+        for (UIWindow *window in [UIApplication sharedApplication].windows)
+            if (!window.isHidden)
+                [window drawViewHierarchyInRect:mainScreen.bounds afterScreenUpdates:NO];
+        screenshot = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+        skipEcho = 0;
+#endif
+        RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
+        capturing = FALSE;
+    }
+
+    dispatch_async(writeQueue, ^{
+        if (timestamp.doubleValue < mostRecentScreenUpdate) {
+            frameno--;
+            return;
+        }
+
+        if (screenshot)
+            CGContextDrawImage(buffer->cg, CGRectMake(0, 0,
+                            screenSize.width, screenSize.height), screenshot.CGImage);
+
+        BOOL blankImage = TRUE;
+        for (const rmpixel_t *curr = buffer->buffer; curr < buffer->buffend; curr++)
+            if (*curr & 0xffffff00) {
+                blankImage = FALSE;
+                break;
+            }
+        if (blankImage) {
+            [self performSelector:@selector(queueCapture) withObject:nil afterDelay:0.1];
+            frameno--;
+            return;
+        }
+
+        NSData *encoded = [buffer subtractAndEncode:prevbuff];
+        NSData *keyframe = [buffer subtractAndEncode:nil];
+        if (keyframe.length < encoded.length)
+            encoded = keyframe;
+
+        frame.length = (unsigned)encoded.length;
+        if (frame.length <= REMOTE_MINDIFF) {
+            frameno--;
+            return;
+        }
+
+#ifdef REMOTE_COMPRESSION
+        struct _rmcompress *buff = malloc(sizeof buff->bytes + encoded.length + 100);
+        uLongf clen = buff->bytes = (unsigned)encoded.length;
+        if (compress2(buff->data, &clen, (const Bytef *)encoded.bytes,
+                      buff->bytes, Z_BEST_SPEED) == Z_OK && clen < encoded.length) {
+            encoded = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
+            RMLog(@"Remote: Delta image %d/%d %.1f%%", (int)encoded.length, frame.length, 100.*encoded.length/frame.length);
+            frame.length = REMOTE_COMPRESSED_OFFSET + (int)encoded.length;
+        }
+#endif
+        if (write(connectionSocket, &frame, sizeof frame) != sizeof frame)
+            NSLog(@"RemoteCapture: Could not write bounds");
+        else if (write(connectionSocket, encoded.bytes, encoded.length) != encoded.length)
+            NSLog(@"RemoteCapture: Could not write out");
+    });
 }
 
 + (void)captureSynchronized:(NSNumber *)timestamp {

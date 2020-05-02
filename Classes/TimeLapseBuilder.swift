@@ -25,17 +25,16 @@ let kFailedToAppendPixelBufferError = 1
 class TimeLapseBuilder: NSObject {
     let images: [NSImage]
     let times: [Double]
-    let videoOutputURL: URL
     var videoWriter: AVAssetWriter?
     
-    @objc init(images: [NSImage], times: [Double], into: URL) {
-        print("\(images) \(times)")
+    @objc init?(images: [NSImage], times: [Double]) {
+        guard images.count != 0 else { return nil }
         self.images = images
         self.times = times
-        self.videoOutputURL = into
     }
 
-    @objc func build(_ progress: @escaping ((Progress) -> Void), success: @escaping ((URL) -> Void), failure: @escaping ((NSError) -> Void)) {
+    @objc func build(_ videoOutputURL: URL, progress: @escaping ((Progress) -> Void),
+                     success: @escaping ((URL) -> Void), failure: @escaping ((NSError) -> Void)) {
         let inputSize = images.first!.size
         let outputSize = images.first!.size
         var error: NSError?
@@ -89,13 +88,21 @@ class TimeLapseBuilder: NSObject {
                     let currentProgress = Progress(totalUnitCount: Int64(self.images.count))
                     
                     var frameCount: Int64 = 0
+                    var lastPresentationFrame: Int64 = -1
                     var remainingImages = [NSImage](self.images)
                     var remainingTimes = [Double](self.times)
 
-                    while videoWriterInput.isReadyForMoreMediaData && !remainingImages.isEmpty {
+                    while !remainingImages.isEmpty {
+                        while !videoWriterInput.isReadyForMoreMediaData {
+                            Thread.sleep(forTimeInterval: 0.1)
+                        }
                         let nextImage = remainingImages.remove(at: 0)
                         let nextTime = remainingTimes.remove(at: 0)
-                        let presentationTime = CMTimeMake(value: Int64(nextTime*Double(fps)), timescale: fps)
+                        var presentationFrame = Int64(nextTime*Double(fps))
+                        if presentationFrame == lastPresentationFrame {
+                            presentationFrame += 1
+                        }
+                        let presentationTime = CMTimeMake(value: presentationFrame, timescale: fps)
 
                         if !self.appendPixelBufferForImage(nextImage, pixelBufferAdaptor: pixelBufferAdaptor, presentationTime: presentationTime) {
                             error = NSError(
@@ -107,6 +114,7 @@ class TimeLapseBuilder: NSObject {
                             break
                         }
                         
+                        lastPresentationFrame = presentationFrame
                         frameCount += 1
                         
                         currentProgress.completedUnitCount = frameCount
@@ -118,7 +126,7 @@ class TimeLapseBuilder: NSObject {
                         if let error = error {
                             failure(error)
                         } else {
-                            success(self.videoOutputURL)
+                            success(videoOutputURL)
                         }
                         
                         self.videoWriter = nil
