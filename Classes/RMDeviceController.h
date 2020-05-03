@@ -7,6 +7,7 @@
 //
 
 #import <Cocoa/Cocoa.h>
+#define REMOTE_LEGACY
 #import "RemoteCapture.h"
 
 @class RMDeviceController;

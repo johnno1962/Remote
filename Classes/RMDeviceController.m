@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMDeviceController.m#36 $
+//  $Id: //depot/Remote/Classes/RMDeviceController.m#38 $
 //
 
 #define REMOTE_IMPL
@@ -207,7 +207,7 @@
     if (!reference)
         reference = currentBuffer;
 
-    struct _rmframe ftmp = { frame.width, frame.height, .5 };
+    struct _rmframe ftmp = {0.0, frame.width, frame.height, 0.5};
     RemoteCapture *btmp = [[RemoteCapture alloc] initFrame:&ftmp];
     CGImageRef img = [reference cgImage];
 
