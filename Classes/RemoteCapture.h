@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RemoteCapture.h#79 $
+//  $Id: //depot/Remote/Classes/RemoteCapture.h#81 $
 //  
 
 #import <sys/sysctl.h>
@@ -107,7 +107,7 @@ struct _rmframe {
 }
 
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
-+ (BOOL)startCapture:(NSString *)addrs;
++ (void)startCapture:(NSString *)addrs;
 + (void)shutdown;
 #endif
 @end
@@ -296,14 +296,19 @@ static NSSet *currentTouches;
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
 
 static id<RemoteDelegate> remoteDelegate;
+static int connectionSocket;
 
 #ifdef REMOTEPLUGIN_SERVERIPS
 + (void)load {
-    [self performSelectorInBackground:@selector(startCapture:) withObject:@REMOTEPLUGIN_SERVERIPS];
+    [self startCapture:@REMOTEPLUGIN_SERVERIPS];
 }
 #endif
 
-+ (BOOL)startCapture:(NSString *)addrs {
++ (void)startCapture:(NSString *)addrs {
+    [self performSelectorInBackground:@selector(startBackground:) withObject:addrs];
+}
+
++ (BOOL)startBackground:(NSString *)addrs {
     for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
         NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
         NSString *inaddr = parts[0];
@@ -313,7 +318,8 @@ static id<RemoteDelegate> remoteDelegate;
         int remoteSocket = [self connectIPV4:inaddr.UTF8String port:port];
         if (remoteSocket) {
             NSLog(@"RemoteCapture: Connected.");
-            [self runCaptureOnSocket:remoteSocket];
+            connectionSocket = remoteSocket;
+            [self performSelectorOnMainThread:@selector(runCapture) withObject:nil waitUntilDone:NO];
             return TRUE;
         }
     }
@@ -339,7 +345,7 @@ static id<RemoteDelegate> remoteDelegate;
         }
     }
 
-    NSLog(@"RemoteCapture: %s attempting connection to: %s:%d", REMOTE_APPNAME, ipAddress, port);
+    NSLog(@"RemoteCapture: Attempting connection to: %s:%d", ipAddress, port);
     return [self connectAddr:(struct sockaddr *)&remoteAddr];
 }
 
@@ -360,12 +366,10 @@ static id<RemoteDelegate> remoteDelegate;
 static NSArray<UIScreen *> *screens;
 static dispatch_queue_t writeQueue;
 static struct _rmdevice device;
-static int connectionSocket;
 static Class UIWindowLayer;
 static CGSize bufferSize;
 
-+ (void)runCaptureOnSocket:(int)remoteSocket {
-    connectionSocket = remoteSocket;
++ (void)runCapture {
     bufferSize.width = 0.0;
 
     while (!(screens = [UIScreen screens]).count)
