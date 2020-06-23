@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RemoteCapture.h#81 $
+//  $Id: //depot/Remote/Classes/RemoteCapture.h#82 $
 //  
 
 #import <sys/sysctl.h>
@@ -469,33 +469,33 @@ static CGSize bufferSize;
                     [currentTouch2 setTimestamp:timestamp];
                     [currentTouch2 setInitialTouchTimestamp:timestamp];
                     [currentTouch2 setPhase:(UITouchPhase)rpevent.phase];
-                    [currentTouch2 setSentTouchesEnded:false];
+//                    [currentTouch2 setSentTouchesEnded:false];
                     [currentTouch2 setWindow:currentTarget.window];
-                    [currentTouch2 _setDisplacement:CGSizeMake(0.0, 0.0)];
-                    [currentTouch2 _setWindowServerHitTestWindow:currentTarget.window];
-                    [currentTouch2 _setTouchIdentifier:touchIdentifier];
+//                    [currentTouch2 _setDisplacement:CGSizeMake(0.0, 0.0)];
+//                    [currentTouch2 _setWindowServerHitTestWindow:currentTarget.window];
+//                    [currentTouch2 _setTouchIdentifier:touchIdentifier];
                     [currentTouch2 _setPathIndex:1];
                     [currentTouch2 _setPathIdentity:2];
-                    [currentTouch2 setMajorRadius:20.0];
-                    [currentTouch2 setMajorRadiusTolerance:5.0];
+//                    [currentTouch2 setMajorRadius:20.0];
+//                    [currentTouch2 setMajorRadiusTolerance:5.0];
                     [currentTouch2 _setType:0];
-                    [currentTouch2 _setNeedsForceUpdate:false];
-                    [currentTouch2 _setHasForceUpdate:false];
-                    [currentTouch2 _setForceCorrelationToken:0];
+//                    [currentTouch2 _setNeedsForceUpdate:false];
+//                    [currentTouch2 _setHasForceUpdate:false];
+//                    [currentTouch2 _setForceCorrelationToken:0];
                     [currentTouch2 _setSenderID:778835616971358211];
                     [currentTouch2 _setZGradient:0.0];
-                    [currentTouch2 _setMaximumPossiblePressure:0.0];
+//                    [currentTouch2 _setMaximumPossiblePressure:0.0];
                     [currentTouch2 _setEdgeType:0];
                     [currentTouch2 _setEdgeAim:0];
 
                     //[self _setIsFirstTouchForView:1];
                     [currentTouch2 setView:currentTarget];
-                    [currentTouch2 _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
-                    [currentTouch2 _setPressure:0.0 resetPrevious:true];
+//                    [currentTouch2 _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
+//                    [currentTouch2 _setPressure:0.0 resetPrevious:true];
                     //[UITouch _updateWithChildEvent:0x600001ff81c0];
-                    [currentTouch2 setIsTap:true];
+//                    [currentTouch2 setIsTap:true];
                     [currentTouch2 setTapCount:1];
-                    [currentTouch2 _setIsFirstTouchForView:true];
+//                    [currentTouch2 _setIsFirstTouchForView:true];
 
                     [currentTouch2 _setLocationInWindow:location resetPrevious:YES];
 
@@ -533,33 +533,33 @@ static CGSize bufferSize;
                     [currentTouch setTimestamp:timestamp];
                     [currentTouch setInitialTouchTimestamp:timestamp];
                     [currentTouch setPhase:(UITouchPhase)rpevent.phase];
-                    [currentTouch setSentTouchesEnded:false];
+//                    [currentTouch setSentTouchesEnded:false];
                     [currentTouch setWindow:currentTarget.window];
-                    [currentTouch _setDisplacement:CGSizeMake(0.0, 0.0)];
-                    [currentTouch _setWindowServerHitTestWindow:currentTarget.window];
-                    [currentTouch _setTouchIdentifier:touchIdentifier];
+//                    [currentTouch _setDisplacement:CGSizeMake(0.0, 0.0)];
+//                    [currentTouch _setWindowServerHitTestWindow:currentTarget.window];
+//                    [currentTouch _setTouchIdentifier:touchIdentifier];
                     [currentTouch _setPathIndex:1];
                     [currentTouch _setPathIdentity:2];
-                    [currentTouch setMajorRadius:20.0];
-                    [currentTouch setMajorRadiusTolerance:5.0];
+//                    [currentTouch setMajorRadius:20.0];
+//                    [currentTouch setMajorRadiusTolerance:5.0];
                     [currentTouch _setType:0];
-                    [currentTouch _setNeedsForceUpdate:false];
-                    [currentTouch _setHasForceUpdate:false];
-                    [currentTouch _setForceCorrelationToken:0];
+//                    [currentTouch _setNeedsForceUpdate:false];
+//                    [currentTouch _setHasForceUpdate:false];
+//                    [currentTouch _setForceCorrelationToken:0];
                     [currentTouch _setSenderID:778835616971358211];
                     [currentTouch _setZGradient:0.0];
-                    [currentTouch _setMaximumPossiblePressure:0.0];
+//                    [currentTouch _setMaximumPossiblePressure:0.0];
                     [currentTouch _setEdgeType:0];
                     [currentTouch _setEdgeAim:0];
 
                     //[self _setIsFirstTouchForView:1];
                     [currentTouch setView:currentTarget];
-                    [currentTouch _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
-                    [currentTouch _setPressure:0.0 resetPrevious:true];
+//                    [currentTouch _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
+//                    [currentTouch _setPressure:0.0 resetPrevious:true];
                     //[UITouch _updateWithChildEvent:0x600001ff81c0];
-                    [currentTouch setIsTap:true];
+//                    [currentTouch setIsTap:true];
                     [currentTouch setTapCount:1];
-                    [currentTouch _setIsFirstTouchForView:true];
+//                    [currentTouch _setIsFirstTouchForView:true];
 
                     [currentTouch _setLocationInWindow:location resetPrevious:YES];
 
@@ -829,7 +829,7 @@ static NSTimeInterval mostRecentScreenUpdate;
     header.length = (int)-touches.count;
 
     for (UITouch *touch in touches) {
-        CGPoint loc = [touch _locationInWindow:touch.window];
+        CGPoint loc = [touch locationInView:touch.window];
         header.phase = (RMTouchPhase)touch.phase;
         header.x = loc.x;
         header.y = loc.y;
