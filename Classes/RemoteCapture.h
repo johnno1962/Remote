@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RemoteCapture.h#82 $
+//  $Id: //depot/Remote/Classes/RemoteCapture.h#83 $
 //  
 
 #import <sys/sysctl.h>
@@ -445,7 +445,7 @@ static CGSize bufferSize;
             static UITextField *textField;
             static UITouch *currentTouch2;
             static UIView *currentTarget;
-            static unsigned touchIdentifier = 100000;
+//            static unsigned touchIdentifier = 100000;
 
             static UITouchesEvent *event;
             if (!event)
