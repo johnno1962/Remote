@@ -7,6 +7,8 @@
 //
 
 #import <Cocoa/Cocoa.h>
+
+#undef XPROBE_PORT
 #define REMOTE_LEGACY
 #import "RemoteCapture.h"
 
