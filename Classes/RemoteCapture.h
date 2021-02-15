@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RemoteCapture.h#83 $
+//  $Id: //depot/Remote/Classes/RemoteCapture.h#95 $
 //  
 
 #import <sys/sysctl.h>
@@ -29,7 +29,7 @@
 #define REMOTE_MAGIC -141414141
 #define REMOTE_MINDIFF (4*sizeof(rmencoded_t))
 #define REMOTE_COMPRESSED_OFFSET 1000000000
-#define REMOTE_VERSION 3
+#define REMOTE_VERSION 4
 
 #ifdef DEBUG
 #define RMLog NSLog
@@ -296,7 +296,7 @@ static NSSet *currentTouches;
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
 
 static id<RemoteDelegate> remoteDelegate;
-static int connectionSocket;
+static NSMutableArray<NSValue *> *connections;
 
 #ifdef REMOTEPLUGIN_SERVERIPS
 + (void)load {
@@ -309,6 +309,7 @@ static int connectionSocket;
 }
 
 + (BOOL)startBackground:(NSString *)addrs {
+    connections = [NSMutableArray new];
     for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
         NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
         NSString *inaddr = parts[0];
@@ -317,13 +318,18 @@ static int connectionSocket;
             port = (in_port_t)parts[1].intValue;
         int remoteSocket = [self connectIPV4:inaddr.UTF8String port:port];
         if (remoteSocket) {
-            NSLog(@"RemoteCapture: Connected.");
-            connectionSocket = remoteSocket;
-            [self performSelectorOnMainThread:@selector(runCapture) withObject:nil waitUntilDone:NO];
-            return TRUE;
+            NSLog(@"RemoteCapture: Connected to %@:%d.", inaddr, port);
+            FILE *writeFp = fdopen(remoteSocket, "w");
+            setbuf(writeFp, NULL);
+            [connections addObject:[NSValue valueWithPointer:writeFp]];
         }
     }
-    return FALSE;
+    if (!connections.count)
+        return FALSE;
+
+    [self performSelectorOnMainThread:@selector(runCapture)
+                           withObject:nil waitUntilDone:NO];
+    return TRUE;
 }
 
 + (int)connectIPV4:(const char *)ipAddress port:(in_port_t)port {
@@ -367,6 +373,7 @@ static NSArray<UIScreen *> *screens;
 static dispatch_queue_t writeQueue;
 static struct _rmdevice device;
 static Class UIWindowLayer;
+static UITouch *realTouch;
 static CGSize bufferSize;
 
 + (void)runCapture {
@@ -411,22 +418,25 @@ static CGSize bufferSize;
 
     timestamp0 = [NSDate timeIntervalSinceReferenceDate];
 
-    if (write(connectionSocket, &device, sizeof device) != sizeof device)
-        NSLog(@"RemoteCapture: Could not write device info");
-
     if (!writeQueue)
         writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
 
+    for (NSValue *fp in connections) {
+        if (fwrite(&device, 1, sizeof device, fp.pointerValue) != sizeof device)
+            NSLog(@"RemoteCapture: Could not write device info: %s", strerror(errno));
+
+        [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
+    }
+
     [remoteDelegate remoteConnected:TRUE];
-    [self performSelectorInBackground:@selector(processEvents) withObject:nil];
     [self performSelectorOnMainThread:@selector(capture:) withObject:nil waitUntilDone:NO];
 }
 
-+ (void)processEvents {
-    FILE *eventStream = fdopen(connectionSocket, "r");
++ (void)processEvents:(NSValue *)writeFp {
+    FILE *readFp = fdopen(fileno(writeFp.pointerValue), "r");
 
     struct _rmevent rpevent;
-    while (fread(&rpevent, 1, sizeof rpevent, eventStream) == sizeof rpevent) {
+    while (fread(&rpevent, 1, sizeof rpevent, readFp) == sizeof rpevent) {
 
         RMLog(@"Remote Event: %f %f %d", rpevent.touches[0].x, rpevent.touches[0].y, rpevent.phase);
 
@@ -528,7 +538,7 @@ static CGSize bufferSize;
                     }
 
                     if (!currentTouch)
-                        currentTouch = [UITouch new];
+                        currentTouch = realTouch ?: [UITouch new];
 
                     [currentTouch setTimestamp:timestamp];
                     [currentTouch setInitialTouchTimestamp:timestamp];
@@ -570,8 +580,8 @@ static CGSize bufferSize;
                     if (currentTouch2)
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
 
-                    [[UIApplication sharedApplication] in_sendEvent:(UIEvent *)event];
-                    if (!isKeyboard)
+                    [[UIApplication sharedApplication] sendEvent:(UIEvent *)event];
+//                    if (!isKeyboard)
                         [currentTarget touchesBegan:currentTouches withEvent:fakeEvent];
                     break;
 
@@ -585,8 +595,8 @@ static CGSize bufferSize;
                     [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
                     [currentTouch2 setTimestamp:timestamp];
 
-                    [[UIApplication sharedApplication] in_sendEvent:(UIEvent *)event];
-                    if (!isKeyboard)
+                    [[UIApplication sharedApplication] sendEvent:(UIEvent *)event];
+//                    if (!isKeyboard)
                         [currentTarget touchesMoved:currentTouches withEvent:fakeEvent];
                     break;
 
@@ -600,8 +610,8 @@ static CGSize bufferSize;
                     [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
                     [currentTouch2 setTimestamp:timestamp];
 
-                    [[UIApplication sharedApplication] in_sendEvent:(UIEvent *)event];
-                    if (!isKeyboard)
+                    [[UIApplication sharedApplication] sendEvent:(UIEvent *)event];
+//                    if (!isKeyboard)
                         [currentTarget touchesEnded:currentTouches withEvent:fakeEvent];
 
                     if (isTextfield) {
@@ -623,16 +633,19 @@ static CGSize bufferSize;
     }
 
     NSLog(@"RemoteCapture: processEvents exits");
-    fclose(eventStream);
-    [self shutdown];
+    fclose(readFp);
+
+    [connections removeObject:writeFp];
+    fclose(writeFp.pointerValue);
+    if (!connections.count)
+        [self shutdown];
 }
 
 + (void)shutdown {
-    if (connectionSocket) {
-        [remoteDelegate remoteConnected:FALSE];
-        close(connectionSocket);
-        connectionSocket = 0;
-    }
+    [remoteDelegate remoteConnected:FALSE];
+    for (NSValue *writeFp in connections)
+        fclose(writeFp.pointerValue);
+    connections = nil;
 }
 
 static int skipEcho;
@@ -648,7 +661,7 @@ static NSTimeInterval mostRecentScreenUpdate;
     CGSize screenSize = screenBounds.size;
     CGFloat imageScale = device.isIPad || device.scale == 3. ? 1. : screen.scale;
     __block struct _rmframe frame = {[NSDate timeIntervalSinceReferenceDate],
-        (float)screenSize.width, (float)screenSize.height, (float)imageScale, 0};
+        {{(float)screenSize.width, (float)screenSize.height, (float)imageScale}}, 0};
 
     static NSArray *buffers;
     static int frameno;
@@ -762,10 +775,14 @@ static NSTimeInterval mostRecentScreenUpdate;
             frame.length = REMOTE_COMPRESSED_OFFSET + (int)encoded.length;
         }
 #endif
-        if (write(connectionSocket, &frame, sizeof frame) != sizeof frame)
-            NSLog(@"RemoteCapture: Could not write bounds");
-        else if (write(connectionSocket, encoded.bytes, encoded.length) != encoded.length)
-            NSLog(@"RemoteCapture: Could not write out");
+
+        for (NSValue *writeFp in connections) {
+            FILE *fp = (FILE *)writeFp.pointerValue;
+            if (fwrite(&frame, 1, sizeof frame, fp) != sizeof frame)
+                NSLog(@"RemoteCapture: Could not write bounds: %s", strerror(errno));
+            else if (fwrite(encoded.bytes, 1, encoded.length, fp) != encoded.length)
+                NSLog(@"RemoteCapture: Could not write encoded: %s", strerror(errno));
+        }
     });
 }
 
@@ -787,7 +804,7 @@ static NSTimeInterval mostRecentScreenUpdate;
 @implementation CALayer(RemoteCapture)
 
 - (void)queueCapture {
-    if (connectionSocket && !capturing && self.class == UIWindowLayer && --skipEcho<0)
+    if (connections.count && !capturing && self.class == UIWindowLayer && --skipEcho<0)
         [RemoteCapture queueCapture];
     else {
         [RemoteCapture cancelPreviousPerformRequestsWithTarget:RemoteCapture.class];
@@ -835,10 +852,13 @@ static NSTimeInterval mostRecentScreenUpdate;
         header.y = loc.y;
         NSData *out = [NSData dataWithBytes:&header length:sizeof header];
         dispatch_async(writeQueue, ^{
-            if (write(connectionSocket, out.bytes, out.length) != out.length)
-                NSLog(@"RemoteCapture: Could not write event");
+            for (NSValue *fp in connections) {
+                if (fwrite(out.bytes, 1, out.length, fp.pointerValue) != out.length)
+                    NSLog(@"RemoteCapture: Could not write event: %s", strerror(errno));
+            }
         });
         header.length++;
+        realTouch = touch;
     }
 }
 

@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMMacroManager.m#22 $
+//  $Id: //depot/Remote/Classes/RMMacroManager.m#23 $
 //
 
 #import "RMMacroManager.h"
@@ -14,7 +14,11 @@
 
 #import "RMWindowController.h"
 #import "RMPluginController.h"
+#if __has_include("InjectionIII-Swift.h")
 #import "InjectionIII-Swift.h"
+#else
+#import "Remote-Swift.h"
+#endif
 
 @implementation RMMacroManager {
     IBOutlet __weak RMWindowController *owner;

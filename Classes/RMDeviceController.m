@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMDeviceController.m#38 $
+//  $Id: //depot/Remote/Classes/RMDeviceController.m#40 $
 //
 
 #define REMOTE_IMPL
@@ -116,9 +116,8 @@
                     event.touches[touchno].y = newFrame.y;
                 }
                 [arg appendFormat:@" x:%.1f y:%.1f", newFrame.x, newFrame.y];
-            }
-            while (newFrame.length != -1 &&
-                   fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame);
+            } while (newFrame.length != -1 && fread(&newFrame, 1,
+                            sizeof newFrame, renderStream) == sizeof newFrame);
 
             [owner.imageView drawTouches:&event];
 
@@ -129,14 +128,16 @@
 
         // resize display window/NSImageView
         if (!buffers || newFrame.imageScale != frame.imageScale ||
-                newFrame.width != frame.width || newFrame.height != frame.height) {
+            newFrame.width != frame.width || newFrame.height != frame.height) {
 
             dispatch_sync(dispatch_get_main_queue(), ^{
                 [owner resize:NSMakeSize(newFrame.width, newFrame.height)];
             });
 
-            deviceString = [NSString stringWithFormat:@"Device w:%g h:%g iscale:%g scale:%g",
-                            newFrame.width, newFrame.height, newFrame.imageScale, device.scale];
+            deviceString = [NSString stringWithFormat:
+                            @"Device w:%g h:%g iscale:%g scale:%g",
+                            newFrame.width, newFrame.height,
+                            newFrame.imageScale, device.scale];
             [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
                                                 withObject:deviceString waitUntilDone:NO];
 
@@ -162,7 +163,8 @@
         }
 
         [owner loading:TRUE];
-        if (fread(tmp, 1, frame.length, renderStream) != frame.length) {
+        if (!frame.length ||
+            fread(tmp, 1, frame.length, renderStream) != frame.length) {
             [owner loading:FALSE];
             break;
         }
@@ -173,7 +175,8 @@
             uLong bytes = buff->bytes;
             void *buff2 = malloc(bytes);
 
-            if (uncompress(buff2, &bytes, buff->data, frame.length-sizeof buff->bytes) != Z_OK || bytes != buff->bytes) {
+            if (!buff || !buff2 ||
+                uncompress(buff2, &bytes, buff->data, frame.length-sizeof buff->bytes) != Z_OK || bytes != buff->bytes) {
                 NSLog(@"RemoteCapture: Uncompress problem");
                 break;
             }
@@ -281,7 +284,6 @@
 }
 
 - (void)writeEvent:(const struct _rmevent *)event {
-    [owner.imageView drawTouches:event];
     if (event && write(clientSocket, event, sizeof *event) != sizeof *event)
         NSLog(@"Remote: event write error");
 }
@@ -308,10 +310,6 @@
         (owner.imageView.frame.size.height-loc.y)*locScale };
 
     [self writeEvent:&event];
-
-    NSMutableString *arg = [self startEvent:phase];
-    [arg appendFormat:@" x:%.1f y:%.1f", event.touches[0].x, event.touches[0].y];
-    [owner logAdd:arg];
 }
 
 @end
