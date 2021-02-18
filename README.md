@@ -12,7 +12,10 @@ record and save all display output into a quicktime movie.
 ### Stop Press
 
 Remote is now available as part of the Injection standalone App
-available [here](http://johnholdsworth.com/injection.html).
+[available here](https://github.com/johnno1962/InjectionIII) and
+as a SPM Swift Package. Use `RemoteCapture.start("list of host names")`
+to start capture once you have used the menu item
+`Remote Control/Start Server` in the InjectionIII App.
 
 ![Icon](http://injectionforxcode.johnholdsworth.com/remote.gif)
 
