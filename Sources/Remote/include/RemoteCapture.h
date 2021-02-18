@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RemoteCapture.h#95 $
+//  $Id: //depot/Remote/Sources/Remote/include/RemoteCapture.h#4 $
 //  
 
 #import <sys/sysctl.h>
@@ -29,7 +29,7 @@
 #define REMOTE_MAGIC -141414141
 #define REMOTE_MINDIFF (4*sizeof(rmencoded_t))
 #define REMOTE_COMPRESSED_OFFSET 1000000000
-#define REMOTE_VERSION 4
+#define REMOTE_VERSION 3
 
 #ifdef DEBUG
 #define RMLog NSLog
@@ -372,6 +372,7 @@ static NSMutableArray<NSValue *> *connections;
 static NSArray<UIScreen *> *screens;
 static dispatch_queue_t writeQueue;
 static struct _rmdevice device;
+static NSValue *inhibitEcho;
 static Class UIWindowLayer;
 static UITouch *realTouch;
 static CGSize bufferSize;
@@ -460,6 +461,8 @@ static CGSize bufferSize;
             static UITouchesEvent *event;
             if (!event)
                 event = [[objc_getClass("UITouchesEvent") alloc] _init];
+
+            inhibitEcho = writeFp;
 
             switch (rpevent.phase) {
 
@@ -629,6 +632,8 @@ static CGSize bufferSize;
                 default:
                     NSLog(@"RemoteCapture: Invalid Event: %d", rpevent.phase);
             }
+
+            inhibitEcho = nil;
         });
     }
 
@@ -834,6 +839,7 @@ static NSTimeInterval mostRecentScreenUpdate;
 - (void)in_sendEvent:(UIEvent *)anEvent {
     [self in_sendEvent:anEvent];
     NSSet *touches = anEvent.allTouches;
+    NSValue *incomingFp = inhibitEcho;
 
 #if 0
     RMLog(@"%@", anEvent);
@@ -853,7 +859,8 @@ static NSTimeInterval mostRecentScreenUpdate;
         NSData *out = [NSData dataWithBytes:&header length:sizeof header];
         dispatch_async(writeQueue, ^{
             for (NSValue *fp in connections) {
-                if (fwrite(out.bytes, 1, out.length, fp.pointerValue) != out.length)
+                if (fp != incomingFp &&
+                    fwrite(out.bytes, 1, out.length, fp.pointerValue) != out.length)
                     NSLog(@"RemoteCapture: Could not write event: %s", strerror(errno));
             }
         });

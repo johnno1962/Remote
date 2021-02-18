@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMDeviceController.m#40 $
+//  $Id: //depot/Remote/Classes/RMDeviceController.m#41 $
 //
 
 #define REMOTE_IMPL
@@ -284,6 +284,7 @@
 }
 
 - (void)writeEvent:(const struct _rmevent *)event {
+    [owner.imageView drawTouches:event];
     if (event && write(clientSocket, event, sizeof *event) != sizeof *event)
         NSLog(@"Remote: event write error");
 }
@@ -310,6 +311,10 @@
         (owner.imageView.frame.size.height-loc.y)*locScale };
 
     [self writeEvent:&event];
+
+    NSMutableString *arg = [self startEvent:phase];
+    [arg appendFormat:@" x:%.1f y:%.1f", event.touches[0].x, event.touches[0].y];
+    [owner logAdd:arg];
 }
 
 @end

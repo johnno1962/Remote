@@ -51,9 +51,11 @@
 		BB79FC72245C8EE500A4B4CB /* Remote-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Remote-Bridging-Header.h"; sourceTree = "<group>"; };
 		BB79FC73245C8EE900A4B4CB /* TimeLapseBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TimeLapseBuilder.swift; sourceTree = "<group>"; };
 		BB82F0CC1913D15F0015AE7A /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
+		BBAA67B025DE8B8C005A62D4 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
+		BBAA67B125DE8C3B005A62D4 /* RemoteImpl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = RemoteImpl.m; path = ../Sources/Remote/RemoteImpl.m; sourceTree = "<group>"; };
 		BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RemoteBundle.xcodeproj; path = RemoteBundle/RemoteBundle.xcodeproj; sourceTree = "<group>"; };
-		BBBD4EFC1A4AE1FE009969E1 /* RemoteCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RemoteCapture.h; sourceTree = "<group>"; };
-		BBBD4EFD1A4AE1FE009969E1 /* RemoteHeaders.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RemoteHeaders.h; sourceTree = "<group>"; };
+		BBBD4EFC1A4AE1FE009969E1 /* RemoteCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RemoteCapture.h; path = ../Sources/Remote/include/RemoteCapture.h; sourceTree = "<group>"; };
+		BBBD4EFD1A4AE1FE009969E1 /* RemoteHeaders.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RemoteHeaders.h; path = ../Sources/Remote/include/RemoteHeaders.h; sourceTree = "<group>"; };
 		BBBD4EFE1A4AE1FE009969E1 /* RMDeviceController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMDeviceController.h; sourceTree = "<group>"; };
 		BBBD4F001A4AE1FE009969E1 /* RMImageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RMImageView.h; sourceTree = "<group>"; };
 		BBBD4F011A4AE1FE009969E1 /* RMImageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RMImageView.m; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 			children = (
 				BB25264B1F65D1A300898347 /* LICENSE */,
 				BB82F0CC1913D15F0015AE7A /* README.md */,
+				BBAA67B025DE8B8C005A62D4 /* Package.swift */,
 				BBBD4EAE1A4AE027009969E1 /* RemoteBundle.xcodeproj */,
 				7F411B0C15FABAC6002F77B6 /* Classes */,
 				089C167CFE841241C02AAC07 /* Resources */,
@@ -149,6 +152,7 @@
 				BBBD4F011A4AE1FE009969E1 /* RMImageView.m */,
 				BBBD4EFC1A4AE1FE009969E1 /* RemoteCapture.h */,
 				BBBD4EFD1A4AE1FE009969E1 /* RemoteHeaders.h */,
+				BBAA67B125DE8C3B005A62D4 /* RemoteImpl.m */,
 				BB79FC72245C8EE500A4B4CB /* Remote-Bridging-Header.h */,
 			);
 			path = Classes;
