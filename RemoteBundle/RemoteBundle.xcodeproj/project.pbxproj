@@ -14,7 +14,7 @@
 
 /* Begin PBXFileReference section */
 		BB126F36192DAE8400416E57 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
-		BB1EEDE11A4EF6E1004BAD5B /* RemoteCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RemoteCapture.h; path = ../../Sources/Remote/include/RemoteCapture.h; sourceTree = "<group>"; };
+		BB1EEDE11A4EF6E1004BAD5B /* RemoteCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RemoteCapture.h; path = ../../Sources/RemoteCapture/include/RemoteCapture.h; sourceTree = "<group>"; };
 		BBBD4EF71A4AE195009969E1 /* RemoteBundle.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RemoteBundle.m; sourceTree = "<group>"; };
 		BBBD4EF91A4AE1A3009969E1 /* RemoteBundle-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "RemoteBundle-Info.plist"; sourceTree = "<group>"; };
 		BBBD4EFA1A4AE1A3009969E1 /* RemoteBundle-Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "RemoteBundle-Prefix.pch"; sourceTree = "<group>"; };

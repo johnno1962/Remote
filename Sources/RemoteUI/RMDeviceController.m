@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMDeviceController.m#41 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#5 $
 //
 
 #define REMOTE_IMPL
@@ -66,14 +66,29 @@
         clientSocket = socket;
         NSLog(@"Initialising device from %d", clientSocket);
         if (read(clientSocket, &device, sizeof device) != sizeof device)
-            [RMWindowController error:@"Could not read device info"];
-        else if (device.version != REMOTE_VERSION)
+            [RMWindowController error:@"Could not read device info: %s", strerror(errno)];
+        else if (device.version != REMOTE_VERSION && device.version != REMOTE_NOKEY)
             [RMWindowController error:@"Invalid remote version: %d != %d",
                   device.version, REMOTE_VERSION];
         else if(device.magic != REMOTE_MAGIC)
             [RMWindowController error:@"Non-matching RemoteCapture.h?"];
-        else
+        else {
+            int32_t keylen = 0;
+            char *nokey = "", *key = nokey;
+
+            if (device.version != REMOTE_NOKEY) {
+                if (read(clientSocket, &keylen, sizeof keylen) != sizeof keylen)
+                    [RMWindowController error:@"Could not read keylen: %s",
+                     strerror(errno)];
+                key = malloc(keylen+1);
+                if (!key || read(clientSocket, key, keylen) != keylen)
+                    [RMWindowController error:@"Could not read %d bytes of key: %s",
+                     keylen, strerror(errno)];
+                free(key);
+            }
+
             [self performSelectorInBackground:@selector(renderService) withObject:nil];
+        }
     }
     return self;
 }

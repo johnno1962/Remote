@@ -6,8 +6,8 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/Remote/include/RemoteCapture.h#4 $
-//  
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#3 $
+//
 
 #import <sys/sysctl.h>
 #import <netinet/tcp.h>
@@ -29,7 +29,9 @@
 #define REMOTE_MAGIC -141414141
 #define REMOTE_MINDIFF (4*sizeof(rmencoded_t))
 #define REMOTE_COMPRESSED_OFFSET 1000000000
-#define REMOTE_VERSION 3
+#define REMOTE_VERSION 4
+#define REMOTE_NOKEY 3
+#define REMOTE_KEY @__FILE__
 
 #ifdef DEBUG
 #define RMLog NSLog
@@ -415,6 +417,9 @@ static CGSize bufferSize;
 
     device.scale = [screens[0] scale];
     device.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
+
+    const char *key = REMOTE_KEY.UTF8String;
+    int32_t keylen = (int)strlen(key);
     device.magic = REMOTE_MAGIC;
 
     timestamp0 = [NSDate timeIntervalSinceReferenceDate];
@@ -424,9 +429,13 @@ static CGSize bufferSize;
 
     for (NSValue *fp in connections) {
         if (fwrite(&device, 1, sizeof device, fp.pointerValue) != sizeof device)
-            NSLog(@"RemoteCapture: Could not write device info: %s", strerror(errno));
-
-        [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
+            NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
+        else if (fwrite(&keylen, 1, sizeof keylen, fp.pointerValue) != sizeof keylen)
+            NSLog(@"%@: Could not write keylen: %s", self, strerror(errno));
+        else if (fwrite(key, 1, keylen, fp.pointerValue) != keylen)
+            NSLog(@"%@: Could not write key: %s", self, strerror(errno));
+        else
+            [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
     }
 
     [remoteDelegate remoteConnected:TRUE];
@@ -657,12 +666,21 @@ static int skipEcho;
 static BOOL capturing;
 static NSTimeInterval mostRecentScreenUpdate;
 
++ (CGRect)screenBounds {
+    NSArray<UIWindow *> *windows = UIApplication.sharedApplication.windows;
+    CGRect bounds = CGRectZero;
+    for (UIWindow *window in windows)
+        if (window.bounds.size.height > bounds.size.height)
+            bounds = window.bounds;
+    return bounds;
+}
+
 + (void)capture:(NSNumber *)timestamp {
 //    RMDebug(@"capture: %f %f", timestamp.doubleValue, mostRecentScreenUpdate);
     if (timestamp.doubleValue < mostRecentScreenUpdate)
         return;
     UIScreen *screen = [UIScreen mainScreen];
-    CGRect screenBounds = screen.bounds;
+    CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
     CGFloat imageScale = device.isIPad || device.scale == 3. ? 1. : screen.scale;
     __block struct _rmframe frame = {[NSDate timeIntervalSinceReferenceDate],
@@ -706,8 +724,8 @@ static NSTimeInterval mostRecentScreenUpdate;
     else {
         capturing = TRUE;
         RMDebug(@"CAPTURE0");
-        UIScreen *mainScreen = [UIScreen mainScreen];
-        CGSize screenSize = mainScreen.bounds.size;
+        CGRect screenBounds = [self screenBounds];
+        CGSize screenSize = screenBounds.size;
 #if 00
         UIView *snapshotView = [keyWindow snapshotViewAfterScreenUpdates:YES];
         RMDebug(@"CAPTURE1");
@@ -728,7 +746,7 @@ static NSTimeInterval mostRecentScreenUpdate;
         UIGraphicsBeginImageContext(screenSize);
         for (UIWindow *window in [UIApplication sharedApplication].windows)
             if (!window.isHidden)
-                [window drawViewHierarchyInRect:mainScreen.bounds afterScreenUpdates:NO];
+                [window drawViewHierarchyInRect:screenBounds afterScreenUpdates:NO];
         screenshot = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
         skipEcho = 0;

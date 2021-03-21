@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMWindowController.m#33 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMWindowController.m#1 $
 //
 
 #import "RMWindowController.h"

@@ -3,3 +3,5 @@
 *RemoteLib/*
 *xcuserdata*
 *xccheckout*
+.swiftpm
+.build

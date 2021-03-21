@@ -9,6 +9,9 @@
 #import "RMPluginController.h"
 #import "RMWindowController.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 @interface INPluginMenuController : NSObject
 + (BOOL)loadRemote:(NSString *)resourcePath;
 + (BOOL)loadBundleForPlugin:(NSString *)resourcePath;
@@ -47,7 +50,8 @@ typedef NS_ENUM(int, DBGState) {
             static RMPluginController *remotePlugin;
             remotePlugin = [[self alloc] init];
             dispatch_async( dispatch_get_main_queue(), ^{
-                [remotePlugin applicationDidFinishLaunching:nil];
+                [remotePlugin applicationDidFinishLaunching:
+                 [NSNotification notificationWithName:@"" object:nil]];
             } );
         });
 }
@@ -209,3 +213,5 @@ typedef NS_ENUM(int, DBGState) {
 }
 
 @end
+
+#pragma clang diagnostic pop
