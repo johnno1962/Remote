@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#5 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#7 $
 //
 
 #define REMOTE_IMPL
@@ -88,8 +88,10 @@
             }
 
             [self performSelectorInBackground:@selector(renderService) withObject:nil];
+            return self;
         }
     }
+    close(socket);
     return self;
 }
 
