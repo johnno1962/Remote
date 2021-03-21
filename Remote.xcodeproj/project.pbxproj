@@ -49,7 +49,7 @@
 		BB5CF6391912DCC50052E10B /* RMPluginController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = RMPluginController.m; path = ../Sources/RemoteUI/RMPluginController.m; sourceTree = "<group>"; };
 		BB61FC291A629AC300833642 /* QTKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QTKit.framework; path = System/Library/Frameworks/QTKit.framework; sourceTree = SDKROOT; };
 		BB79FC72245C8EE500A4B4CB /* Remote-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Remote-Bridging-Header.h"; sourceTree = "<group>"; };
-		BB79FC73245C8EE900A4B4CB /* TimeLapseBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TimeLapseBuilder.swift; sourceTree = "<group>"; };
+		BB79FC73245C8EE900A4B4CB /* TimeLapseBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = TimeLapseBuilder.swift; path = ../Sources/RemoteMovie/TimeLapseBuilder.swift; sourceTree = "<group>"; };
 		BB82F0CC1913D15F0015AE7A /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		BBAA67B025DE8B8C005A62D4 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 		BBAA67B125DE8C3B005A62D4 /* RemoteImpl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = RemoteImpl.m; path = ../Sources/RemoteCapture/RemoteImpl.m; sourceTree = "<group>"; };

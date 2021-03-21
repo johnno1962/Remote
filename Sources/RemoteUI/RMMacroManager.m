@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#2 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#5 $
 //
 
 #import "RMMacroManager.h"
@@ -16,18 +16,16 @@
 #import "RMPluginController.h"
 #import <objc/runtime.h>
 
-//#if __has_include("InjectionIII-Swift.h")
-//#import "InjectionIII-Swift.h"
-//#else
-//#import "Remote-Swift.h"
-//#endif
-
+#if __has_include("InjectionIII-Swift.h")
+#import "InjectionIII-Swift.h"
+#else
 @interface TimeLapseBuilder
 - (instancetype)initWithImages:(NSArray *)images times:(NSArray *)times;
 - (void)build:(NSURL *)url progress:(void (^)(id))progress
                             success:(void (^)(NSURL *))success
                             failure:(void (^)(NSError *))failure;
 @end
+#endif
 
 @implementation RMMacroManager {
     IBOutlet __weak RMWindowController *owner;
@@ -248,7 +246,9 @@
             times = nil;
         }
       failure:^(NSError * _Nonnull err){
-        [[owner class] error:@"Error: %@", err];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[owner class] error:@"Error: %@", err];
+        });
         }];
 }
 

@@ -21,7 +21,7 @@ let kErrorDomain = "TimeLapseBuilder"
 let kFailedToStartAssetWriterError = 0
 let kFailedToAppendPixelBufferError = 1
 
-@objc
+@objc(TimeLapseBuilder)
 class TimeLapseBuilder: NSObject {
     let images: [NSImage]
     let times: [Double]
