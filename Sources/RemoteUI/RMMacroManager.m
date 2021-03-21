@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Classes/RMMacroManager.m#23 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#2 $
 //
 
 #import "RMMacroManager.h"
@@ -14,11 +14,20 @@
 
 #import "RMWindowController.h"
 #import "RMPluginController.h"
-#if __has_include("InjectionIII-Swift.h")
-#import "InjectionIII-Swift.h"
-#else
-#import "Remote-Swift.h"
-#endif
+#import <objc/runtime.h>
+
+//#if __has_include("InjectionIII-Swift.h")
+//#import "InjectionIII-Swift.h"
+//#else
+//#import "Remote-Swift.h"
+//#endif
+
+@interface TimeLapseBuilder
+- (instancetype)initWithImages:(NSArray *)images times:(NSArray *)times;
+- (void)build:(NSURL *)url progress:(void (^)(id))progress
+                            success:(void (^)(NSURL *))success
+                            failure:(void (^)(NSError *))failure;
+@end
 
 @implementation RMMacroManager {
     IBOutlet __weak RMWindowController *owner;
@@ -224,7 +233,7 @@
     NSString *movieTmp = [NSTemporaryDirectory()
         stringByAppendingPathComponent:@"remote.mov"];
 
-    [[[TimeLapseBuilder alloc]
+    [[[objc_getClass("TimeLapseBuilder") alloc]
          initWithImages:images times:times]
         build:[NSURL fileURLWithPath:movieTmp]
      progress:^(NSProgress *progress){

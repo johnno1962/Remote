@@ -3,15 +3,16 @@
 
 import PackageDescription
 
-let name = "Remote"
 let package = Package(
-    name: name,
-    platforms: [.iOS("10.0")],
+    name: "RemotePlugin",
+    platforms: [.iOS("10.0"), .macOS("10.12")],
     products: [
-        .library(name: name, targets: [name]),
+        .library(name: "RemoteCapture", targets: ["RemoteCapture"]),
+        .library(name: "RemoteUI", targets: ["RemoteUI"]),
     ],
     dependencies: [],
     targets: [
-        .target(name: name),
+        .target(name: "RemoteCapture"),
+        .target(name: "RemoteUI"),
     ]
 )
