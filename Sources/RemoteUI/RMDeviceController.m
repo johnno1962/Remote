@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#7 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#9 $
 //
 
 #define REMOTE_IMPL
@@ -81,9 +81,14 @@
                     [RMWindowController error:@"Could not read keylen: %s",
                      strerror(errno)];
                 key = malloc(keylen+1);
+                key[keylen] = '\000';
                 if (!key || read(clientSocket, key, keylen) != keylen)
                     [RMWindowController error:@"Could not read %d bytes of key: %s",
                      keylen, strerror(errno)];
+                else {
+                    for (int i=0 ; i<keylen; i++)
+                        key[i] ^= REMOTE_XOR;
+                }
                 free(key);
             }
 

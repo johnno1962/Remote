@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#5 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#6 $
 //
 
 #import "RMMacroManager.h"
@@ -16,7 +16,7 @@
 #import "RMPluginController.h"
 #import <objc/runtime.h>
 
-#if __has_include("InjectionIII-Swift.h")
+#ifdef INJECTION_III_APP
 #import "InjectionIII-Swift.h"
 #else
 @interface TimeLapseBuilder

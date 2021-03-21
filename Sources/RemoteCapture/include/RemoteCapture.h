@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#3 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#6 $
 //
 
 #import <sys/sysctl.h>
@@ -32,6 +32,7 @@
 #define REMOTE_VERSION 4
 #define REMOTE_NOKEY 3
 #define REMOTE_KEY @__FILE__
+#define REMOTE_XOR 0xc5
 
 #ifdef DEBUG
 #define RMLog NSLog
@@ -418,8 +419,10 @@ static CGSize bufferSize;
     device.scale = [screens[0] scale];
     device.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
 
-    const char *key = REMOTE_KEY.UTF8String;
+    char *key = strdup(REMOTE_KEY.UTF8String);
     int32_t keylen = (int)strlen(key);
+    for (int i=0 ; i<keylen; i++)
+        key[i] ^= REMOTE_XOR;
     device.magic = REMOTE_MAGIC;
 
     timestamp0 = [NSDate timeIntervalSinceReferenceDate];
@@ -438,6 +441,7 @@ static CGSize bufferSize;
             [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
     }
 
+    free(key);
     [remoteDelegate remoteConnected:TRUE];
     [self performSelectorOnMainThread:@selector(capture:) withObject:nil waitUntilDone:NO];
 }
