@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#6 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#7 $
 //
 
 #import "RMMacroManager.h"
@@ -19,7 +19,7 @@
 #ifdef INJECTION_III_APP
 #import "InjectionIII-Swift.h"
 #else
-@interface TimeLapseBuilder
+@interface TimeLapseBuilder : NSObject
 - (instancetype)initWithImages:(NSArray *)images times:(NSArray *)times;
 - (void)build:(NSURL *)url progress:(void (^)(id))progress
                             success:(void (^)(NSURL *))success
@@ -231,7 +231,7 @@
     NSString *movieTmp = [NSTemporaryDirectory()
         stringByAppendingPathComponent:@"remote.mov"];
 
-    [[[objc_getClass("TimeLapseBuilder") alloc]
+    [[[TimeLapseBuilder alloc]
          initWithImages:images times:times]
         build:[NSURL fileURLWithPath:movieTmp]
      progress:^(NSProgress *progress){
