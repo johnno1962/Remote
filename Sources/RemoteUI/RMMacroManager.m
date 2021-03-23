@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#7 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#9 $
 //
 
 #import "RMMacroManager.h"
@@ -19,15 +19,21 @@
 #ifdef INJECTION_III_APP
 #import "InjectionIII-Swift.h"
 #else
+@protocol TimelapseBuilderDelegate;
 @interface TimeLapseBuilder : NSObject
-- (instancetype)initWithImages:(NSArray *)images times:(NSArray *)times;
-- (void)build:(NSURL *)url progress:(void (^)(id))progress
-                            success:(void (^)(NSURL *))success
-                            failure:(void (^)(NSError *))failure;
+- (instancetype)initWithDelegate:(id<TimelapseBuilderDelegate>)delegate;
+- (void)buildWithImages:(NSArray<NSImage *> *)url
+                  times:(NSArray<NSNumber *> *)times
+           toOutputPath:(NSString *)movieFile;
+@end
+@protocol TimelapseBuilderDelegate
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didMakeProgress:(NSProgress *)progress;
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didFailWithError:(NSError *)error;
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didFinishWithURL:(NSURL *)url;
 @end
 #endif
 
-@implementation RMMacroManager {
+@interface RMMacroManager () <TimelapseBuilderDelegate> {
     IBOutlet __weak RMWindowController *owner;
     IBOutlet __weak NSTextField *macroName;
     IBOutlet __weak NSPopUpButton *loader;
@@ -38,11 +44,14 @@
     IBOutlet __weak NSImageView *snapshot;
 
     IBOutlet __weak NSButton *bRecord, *bPause, *bStop;
+    NSTimeInterval lastImageTime, recordedTime;
     NSMutableArray<NSImage *> *images;
     NSMutableArray<NSNumber *> *times;
-    NSTimeInterval lastImageTime, recordedTime;
     NSImage *lastImage;
+    int movieNumber;
 }
+@end
+@implementation RMMacroManager
 
 - (void)awakeFromNib {
     NSURL *url = [[NSBundle bundleForClass:[self class]] URLForResource:@"log" withExtension:@"html"];
@@ -228,28 +237,24 @@
     bStop.enabled = FALSE;
     [self recordImage:lastImage];
 
-    NSString *movieTmp = [NSTemporaryDirectory()
-        stringByAppendingPathComponent:@"remote.mov"];
+    NSString *movieTmp = [NSString stringWithFormat:@"%@/remote%d.mov",
+                          NSTemporaryDirectory(), ++movieNumber];
+    [[[TimeLapseBuilder alloc] initWithDelegate:self]
+     buildWithImages:images times:times toOutputPath:movieTmp];
+}
 
-    [[[TimeLapseBuilder alloc]
-         initWithImages:images times:times]
-        build:[NSURL fileURLWithPath:movieTmp]
-     progress:^(NSProgress *progress){
-            NSLog(@"Progress: %@", progress);
-        }
-      success:^(NSURL * _Nonnull url){
-            NSLog(@"Success: %@", url);
-            [[NSWorkspace sharedWorkspace]
-             openURL:[[NSURL alloc]
-                      initFileURLWithPath:url.path]];
-            images = nil;
-            times = nil;
-        }
-      failure:^(NSError * _Nonnull err){
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [[owner class] error:@"Error: %@", err];
-        });
-        }];
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didMakeProgress:(NSProgress *)progress {
+    NSLog(@"%@", progress);
+}
+
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didFailWithError:(NSError *)error {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[owner class] error:@"Error: %@", error];
+    });
+}
+
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didFinishWithURL:(NSURL *)url {
+    [[NSWorkspace sharedWorkspace] openURL:url];
 }
 
 - (void)recordImage:(NSImage *)image {
