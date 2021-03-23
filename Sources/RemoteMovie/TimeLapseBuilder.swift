@@ -6,27 +6,16 @@
 //  Adapted for macOS under MIT License from:
 //  https://github.com/acj/TimeLapseBuilder-Swift
 //
-//  $Id: //depot/Remote/Sources/RemoteMovie/TimeLapseBuilder.swift#3 $
+//  $Id: //depot/Remote/Sources/RemoteMovie/TimeLapseBuilder.swift#5 $
 //
-
 
 import AVFoundation
 
 #if os(macOS)
 import Cocoa
-public typealias TLImage = NSImage
-extension NSImage {
-    var cgImage: CGImage? {
-        var proposedRect = CGRect(origin: .zero, size: size)
-
-        return cgImage(forProposedRect: &proposedRect,
-                       context: nil,
-                       hints: nil)
-    }
-}
+public typealias UIImage = NSImage
 #else
 import UIKit
-public typealias TLImage = UIImage
 #endif
 
 let kErrorDomain = "TimeLapseBuilder"
@@ -45,17 +34,18 @@ let kFailedToProcessAssetPath = 3
 public class TimeLapseBuilder: NSObject {
     public var delegate: TimelapseBuilderDelegate
 
+    let videoOutputURL: URL
     var videoWriter: AVAssetWriter?
+    let videoWriterInput: AVAssetWriterInput
+    let pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor
+    var lastPresentationFrame: Int64 = -1
+    let framesPerSecond: Int32 = 30
 
-    @objc public init(delegate: TimelapseBuilderDelegate) {
+    @objc public init?(firstImage: UIImage, movieFile: String, delegate: TimelapseBuilderDelegate) {
         self.delegate = delegate
-    }
-
-    @objc public func build(images: [TLImage], times:[Double], toOutputPath: String) {
-        let framesPerSecond: Int32 = 30, type = AVFileType.mov
-
         // Output video dimensions are inferred from the first image asset
-        guard let canvasSize = images.first?.size,
+        let canvasSize = firstImage.size
+        guard
             canvasSize != CGSize.zero
         else {
             let error = NSError(
@@ -63,128 +53,92 @@ public class TimeLapseBuilder: NSObject {
                 code: kFailedToDetermineAssetDimensions,
                 userInfo: ["description": "TimelapseBuilder failed to determine the dimensions of the first asset. Does the URL or file path exist?"]
             )
-            self.delegate.timeLapseBuilder(self, didFailWithError: error)
-            return
-        }
-
-        var error: NSError?
-        let videoOutputURL = URL(fileURLWithPath: toOutputPath)
-
-        do {
-            try FileManager.default.removeItem(at: videoOutputURL)
-        } catch {}
-
-        do {
-            try videoWriter = AVAssetWriter(outputURL: videoOutputURL, fileType: type)
-        } catch let writerError as NSError {
-            error = writerError
-            videoWriter = nil
-        }
-
-        if let videoWriter = videoWriter {
-            let videoSettings: [String : AnyObject] = [
-                AVVideoCodecKey  : AVVideoCodecH264 as AnyObject,
-                AVVideoWidthKey  : canvasSize.width as AnyObject,
-                AVVideoHeightKey : canvasSize.height as AnyObject,
-            ]
-
-            let videoWriterInput = AVAssetWriterInput(mediaType: AVMediaType.video, outputSettings: videoSettings)
-
-            let sourceBufferAttributes = [
-                (kCVPixelBufferPixelFormatTypeKey as String): Int(kCVPixelFormatType_32ARGB),
-                (kCVPixelBufferWidthKey as String): Float(canvasSize.width),
-                (kCVPixelBufferHeightKey as String): Float(canvasSize.height)] as [String : Any]
-
-            let pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
-                assetWriterInput: videoWriterInput,
-                sourcePixelBufferAttributes: sourceBufferAttributes
-            )
-
-            assert(videoWriter.canAdd(videoWriterInput))
-            videoWriter.add(videoWriterInput)
-
-            if videoWriter.startWriting() {
-                videoWriter.startSession(atSourceTime: CMTime.zero)
-                assert(pixelBufferAdaptor.pixelBufferPool != nil)
-
-                let media_queue = DispatchQueue(label: "mediaInputQueue")
-
-                videoWriterInput.requestMediaDataWhenReady(on: media_queue) {
-                    let currentProgress = Progress(totalUnitCount: Int64(images.count))
-
-                    var frameCount: Int64 = 0
-                    var remainingImages = images
-                    var remainingTimes = times
-                    var lastPresentationFrame: Int64 = -1
-
-                    while !remainingImages.isEmpty {
-                        while videoWriterInput.isReadyForMoreMediaData {
-                            if remainingImages.isEmpty {
-                                break
-                            }
-                            let nextImage = remainingImages.remove(at: 0)
-                            let nextTime = remainingTimes.remove(at: 0)
-                            var presentationFrame = Int64(nextTime*Double(framesPerSecond))
-                            while presentationFrame <= lastPresentationFrame {
-                                presentationFrame += 1
-                            }
-                            lastPresentationFrame = presentationFrame
-                            let presentationTime = CMTimeMake(value:
-                                presentationFrame, timescale: framesPerSecond)
-//                            let presentationTime = CMTimeMake(value: frameCount, timescale: framesPerSecond)
-                            if !self.appendPixelBufferFor(nextImage, pixelBufferAdaptor: pixelBufferAdaptor, presentationTime: presentationTime) {
-                                error = NSError(
-                                    domain: kErrorDomain,
-                                    code: kFailedToAppendPixelBufferError,
-                                    userInfo: ["description": "AVAssetWriterInputPixelBufferAdapter failed to append pixel buffer"]
-                                )
-
-                                break
-                            }
-
-                            frameCount += 1
-
-                            currentProgress.completedUnitCount = frameCount
-                            NSLog("\(currentProgress)")
-                            self.delegate.timeLapseBuilder(self, didMakeProgress: currentProgress)
-                        }
-                    }
-
-                    videoWriterInput.markAsFinished()
-                    videoWriter.finishWriting {
-                        if let error = error {
-                            self.delegate.timeLapseBuilder(self, didFailWithError: error)
-                        } else {
-                            self.delegate.timeLapseBuilder(self, didFinishWithURL: videoOutputURL)
-                        }
-
-                        self.videoWriter = nil
-                    }
-                }
-            } else {
-                error = NSError(
-                    domain: kErrorDomain,
-                    code: kFailedToStartAssetWriterError,
-                    userInfo: ["description": "AVAssetWriter failed to start writing"]
-                )
-            }
-        }
-
-        if let error = error {
-            self.delegate.timeLapseBuilder(self, didFailWithError: error)
-        }
-    }
-
-    func dimensionsOfImage(url: URL) -> CGSize? {
-        guard let imageData = try? Data(contentsOf: url),
-              let image = TLImage(data: imageData) else {
+            NSLog("TimeLapseBuilder error: \(error)")
             return nil
         }
 
-        return image.size
+        videoOutputURL = URL(fileURLWithPath: movieFile)
+
+        try? FileManager.default.removeItem(at: videoOutputURL)
+
+        do {
+            videoWriter = try AVAssetWriter(outputURL: videoOutputURL, fileType: AVFileType.mov)
+        } catch {
+            NSLog("TimeLapseBuilder error: \(error)")
+//            delegate.timeLapseBuilder(self, didFailWithError: error)
+            return nil
+        }
+
+        guard let videoWriter = videoWriter else {
+            NSLog("TimeLapseBuilder: nil videoWriter")
+            return nil
+        }
+
+        let videoSettings: [String : AnyObject] = [
+            AVVideoCodecKey  : AVVideoCodecH264 as AnyObject,
+            AVVideoWidthKey  : canvasSize.width as AnyObject,
+            AVVideoHeightKey : canvasSize.height as AnyObject,
+        ]
+
+        videoWriterInput = AVAssetWriterInput(mediaType: AVMediaType.video, outputSettings: videoSettings)
+
+        let sourceBufferAttributes = [
+            (kCVPixelBufferPixelFormatTypeKey as String): Int(kCVPixelFormatType_32ARGB),
+            (kCVPixelBufferWidthKey as String): Float(canvasSize.width),
+            (kCVPixelBufferHeightKey as String): Float(canvasSize.height)] as [String : Any]
+
+        pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput: videoWriterInput,
+            sourcePixelBufferAttributes: sourceBufferAttributes
+        )
+
+        super.init()
+
+        assert(videoWriter.canAdd(videoWriterInput))
+        videoWriter.add(videoWriterInput)
+
+        if videoWriter.startWriting() {
+            videoWriter.startSession(atSourceTime: CMTime.zero)
+            assert(pixelBufferAdaptor.pixelBufferPool != nil)
+        }
+
+        add(time: 0.0, image: firstImage)
     }
 
-    func appendPixelBufferFor(_ image: TLImage, pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor, presentationTime: CMTime) -> Bool {
+    @objc public func add(time: TimeInterval, image: UIImage) {
+//        NSLog("%f, %@", time, image)
+        var presentationFrame = Int64(time*Double(self.framesPerSecond))
+        while presentationFrame <= lastPresentationFrame {
+            presentationFrame += 1
+        }
+        lastPresentationFrame = presentationFrame
+        let presentationTime = CMTimeMake(value: presentationFrame,
+                                          timescale: framesPerSecond)
+        while !videoWriterInput.isReadyForMoreMediaData {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        }
+        if !self.appendPixelBufferForImage(image, pixelBufferAdaptor:
+            self.pixelBufferAdaptor, presentationTime: presentationTime) {
+            let error = NSError(
+                 domain: kErrorDomain,
+                 code: kFailedToAppendPixelBufferError,
+                 userInfo: ["description":
+                    "AVAssetWriterInputPixelBufferAdapter failed to append pixel buffer \(presentationTime.seconds)s \(image)"]
+            )
+            NSLog("\(self) error: \(error)")
+            delegate.timeLapseBuilder(self, didFailWithError: error)
+        }
+    }
+
+    @objc func finish() {
+        videoWriterInput.markAsFinished()
+        videoWriter?.finishWriting {
+            self.delegate.timeLapseBuilder(self, didFinishWithURL: self.videoOutputURL)
+            self.videoWriter = nil
+        }
+    }
+
+    func appendPixelBufferForImage(_ image: UIImage, pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor, presentationTime: CMTime) -> Bool {
         var appendSucceeded = false
 
         autoreleasepool {
@@ -206,17 +160,19 @@ public class TimeLapseBuilder: NSObject {
 
                     pixelBufferPointer.deinitialize(count: 1)
                 } else {
-                    NSLog("error: Failed to allocate pixel buffer from pool")
+                    NSLog("\(self) error: No pixelBuffer from pool?")
                 }
 
                 pixelBufferPointer.deallocate()
+            } else {
+                NSLog("\(self) error: No pixelBufferPool?")
             }
         }
 
         return appendSucceeded
     }
 
-    func fillPixelBufferFromImage(_ image: TLImage, pixelBuffer: CVPixelBuffer) {
+    func fillPixelBufferFromImage(_ image: UIImage, pixelBuffer: CVPixelBuffer) {
         CVPixelBufferLockBaseAddress(pixelBuffer, CVPixelBufferLockFlags(rawValue: 0))
 
         let pixelData = CVPixelBufferGetBaseAddress(pixelBuffer)
@@ -236,3 +192,15 @@ public class TimeLapseBuilder: NSObject {
         CVPixelBufferUnlockBaseAddress(pixelBuffer, CVPixelBufferLockFlags(rawValue: 0))
     }
 }
+
+#if os(macOS)
+extension NSImage {
+    var cgImage: CGImage? {
+        var proposedRect = CGRect(origin: .zero, size: size)
+
+        return cgImage(forProposedRect: &proposedRect,
+                       context: nil,
+                       hints: nil)
+    }
+}
+#endif

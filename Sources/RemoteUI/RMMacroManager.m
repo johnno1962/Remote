@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#9 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#11 $
 //
 
 #import "RMMacroManager.h"
@@ -21,10 +21,10 @@
 #else
 @protocol TimelapseBuilderDelegate;
 @interface TimeLapseBuilder : NSObject
-- (instancetype)initWithDelegate:(id<TimelapseBuilderDelegate>)delegate;
-- (void)buildWithImages:(NSArray<NSImage *> *)url
-                  times:(NSArray<NSNumber *> *)times
-           toOutputPath:(NSString *)movieFile;
+- (instancetype)initWithFirstImage:(NSImage *)image movieFile:(NSString *)file
+                          delegate:(id<TimelapseBuilderDelegate>)delegate;
+- (void)addWithTime:(NSTimeInterval)time image:(NSImage *)image;
+- (void)finish;
 @end
 @protocol TimelapseBuilderDelegate
 - (void)timeLapseBuilder:(TimeLapseBuilder *)builder didMakeProgress:(NSProgress *)progress;
@@ -45,12 +45,12 @@
 
     IBOutlet __weak NSButton *bRecord, *bPause, *bStop;
     NSTimeInterval lastImageTime, recordedTime;
-    NSMutableArray<NSImage *> *images;
-    NSMutableArray<NSNumber *> *times;
+    TimeLapseBuilder *movieBuilder;
     NSImage *lastImage;
     int movieNumber;
 }
 @end
+
 @implementation RMMacroManager
 
 - (void)awakeFromNib {
@@ -217,10 +217,12 @@
 
 - (IBAction)record:sender {
     lastImageTime = [NSDate timeIntervalSinceReferenceDate];
-    images = [NSMutableArray new];
-    times = [NSMutableArray new];
     recordedTime = 0.0;
-    [self recordImage:lastImage];
+    NSString *movieFile = [NSString stringWithFormat:@"%@/remote%d.mov",
+                           NSTemporaryDirectory(), ++movieNumber];
+    movieBuilder = [[TimeLapseBuilder alloc] initWithFirstImage: lastImage
+                                                      movieFile: movieFile
+                                                       delegate: self];
     bRecord.enabled = FALSE;
     bStop.enabled = TRUE;
 }
@@ -237,10 +239,9 @@
     bStop.enabled = FALSE;
     [self recordImage:lastImage];
 
-    NSString *movieTmp = [NSString stringWithFormat:@"%@/remote%d.mov",
-                          NSTemporaryDirectory(), ++movieNumber];
-    [[[TimeLapseBuilder alloc] initWithDelegate:self]
-     buildWithImages:images times:times toOutputPath:movieTmp];
+    TimeLapseBuilder *builder = movieBuilder;
+    movieBuilder = nil;
+    [builder finish];
 }
 
 - (void)timeLapseBuilder:(TimeLapseBuilder *)builder didMakeProgress:(NSProgress *)progress {
@@ -261,8 +262,7 @@
     NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
     if (lastImage && (!bPause.state || !image)) {
         recordedTime += now - lastImageTime;
-        [images addObject:lastImage];
-        [times addObject:[NSNumber numberWithDouble:recordedTime]];
+        [movieBuilder addWithTime:recordedTime image:image];
     }
 
     lastImageTime = now;
