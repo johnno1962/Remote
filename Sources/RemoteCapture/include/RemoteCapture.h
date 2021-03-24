@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#1 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#6 $
 //
 
 #import <sys/sysctl.h>
@@ -29,7 +29,10 @@
 #define REMOTE_MAGIC -141414141
 #define REMOTE_MINDIFF (4*sizeof(rmencoded_t))
 #define REMOTE_COMPRESSED_OFFSET 1000000000
-#define REMOTE_VERSION 3
+#define REMOTE_VERSION 4
+#define REMOTE_NOKEY 3
+#define REMOTE_KEY @__FILE__
+#define REMOTE_XOR 0xc5
 
 #ifdef DEBUG
 #define RMLog NSLog
@@ -415,6 +418,11 @@ static CGSize bufferSize;
 
     device.scale = [screens[0] scale];
     device.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
+
+    char *key = strdup(REMOTE_KEY.UTF8String);
+    int32_t keylen = (int)strlen(key);
+    for (int i=0 ; i<keylen; i++)
+        key[i] ^= REMOTE_XOR;
     device.magic = REMOTE_MAGIC;
 
     timestamp0 = [NSDate timeIntervalSinceReferenceDate];
@@ -424,11 +432,16 @@ static CGSize bufferSize;
 
     for (NSValue *fp in connections) {
         if (fwrite(&device, 1, sizeof device, fp.pointerValue) != sizeof device)
-            NSLog(@"RemoteCapture: Could not write device info: %s", strerror(errno));
-
-        [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
+            NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
+        else if (fwrite(&keylen, 1, sizeof keylen, fp.pointerValue) != sizeof keylen)
+            NSLog(@"%@: Could not write keylen: %s", self, strerror(errno));
+        else if (fwrite(key, 1, keylen, fp.pointerValue) != keylen)
+            NSLog(@"%@: Could not write key: %s", self, strerror(errno));
+        else
+            [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
     }
 
+    free(key);
     [remoteDelegate remoteConnected:TRUE];
     [self performSelectorOnMainThread:@selector(capture:) withObject:nil waitUntilDone:NO];
 }

@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#2 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMMacroManager.m#11 $
 //
 
 #import "RMMacroManager.h"
@@ -16,20 +16,24 @@
 #import "RMPluginController.h"
 #import <objc/runtime.h>
 
-//#if __has_include("InjectionIII-Swift.h")
-//#import "InjectionIII-Swift.h"
-//#else
-//#import "Remote-Swift.h"
-//#endif
-
-@interface TimeLapseBuilder
-- (instancetype)initWithImages:(NSArray *)images times:(NSArray *)times;
-- (void)build:(NSURL *)url progress:(void (^)(id))progress
-                            success:(void (^)(NSURL *))success
-                            failure:(void (^)(NSError *))failure;
+#ifdef INJECTION_III_APP
+#import "InjectionIII-Swift.h"
+#else
+@protocol TimelapseBuilderDelegate;
+@interface TimeLapseBuilder : NSObject
+- (instancetype)initWithFirstImage:(NSImage *)image movieFile:(NSString *)file
+                          delegate:(id<TimelapseBuilderDelegate>)delegate;
+- (void)addWithTime:(NSTimeInterval)time image:(NSImage *)image;
+- (void)finish;
 @end
+@protocol TimelapseBuilderDelegate
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didMakeProgress:(NSProgress *)progress;
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didFailWithError:(NSError *)error;
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didFinishWithURL:(NSURL *)url;
+@end
+#endif
 
-@implementation RMMacroManager {
+@interface RMMacroManager () <TimelapseBuilderDelegate> {
     IBOutlet __weak RMWindowController *owner;
     IBOutlet __weak NSTextField *macroName;
     IBOutlet __weak NSPopUpButton *loader;
@@ -40,11 +44,14 @@
     IBOutlet __weak NSImageView *snapshot;
 
     IBOutlet __weak NSButton *bRecord, *bPause, *bStop;
-    NSMutableArray<NSImage *> *images;
-    NSMutableArray<NSNumber *> *times;
     NSTimeInterval lastImageTime, recordedTime;
+    TimeLapseBuilder *movieBuilder;
     NSImage *lastImage;
+    int movieNumber;
 }
+@end
+
+@implementation RMMacroManager
 
 - (void)awakeFromNib {
     NSURL *url = [[NSBundle bundleForClass:[self class]] URLForResource:@"log" withExtension:@"html"];
@@ -210,10 +217,12 @@
 
 - (IBAction)record:sender {
     lastImageTime = [NSDate timeIntervalSinceReferenceDate];
-    images = [NSMutableArray new];
-    times = [NSMutableArray new];
     recordedTime = 0.0;
-    [self recordImage:lastImage];
+    NSString *movieFile = [NSString stringWithFormat:@"%@/remote%d.mov",
+                           NSTemporaryDirectory(), ++movieNumber];
+    movieBuilder = [[TimeLapseBuilder alloc] initWithFirstImage: lastImage
+                                                      movieFile: movieFile
+                                                       delegate: self];
     bRecord.enabled = FALSE;
     bStop.enabled = TRUE;
 }
@@ -230,34 +239,30 @@
     bStop.enabled = FALSE;
     [self recordImage:lastImage];
 
-    NSString *movieTmp = [NSTemporaryDirectory()
-        stringByAppendingPathComponent:@"remote.mov"];
+    TimeLapseBuilder *builder = movieBuilder;
+    movieBuilder = nil;
+    [builder finish];
+}
 
-    [[[objc_getClass("TimeLapseBuilder") alloc]
-         initWithImages:images times:times]
-        build:[NSURL fileURLWithPath:movieTmp]
-     progress:^(NSProgress *progress){
-            NSLog(@"Progress: %@", progress);
-        }
-      success:^(NSURL * _Nonnull url){
-            NSLog(@"Success: %@", url);
-            [[NSWorkspace sharedWorkspace]
-             openURL:[[NSURL alloc]
-                      initFileURLWithPath:url.path]];
-            images = nil;
-            times = nil;
-        }
-      failure:^(NSError * _Nonnull err){
-        [[owner class] error:@"Error: %@", err];
-        }];
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didMakeProgress:(NSProgress *)progress {
+    NSLog(@"%@", progress);
+}
+
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didFailWithError:(NSError *)error {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[owner class] error:@"Error: %@", error];
+    });
+}
+
+- (void)timeLapseBuilder:(TimeLapseBuilder *)builder didFinishWithURL:(NSURL *)url {
+    [[NSWorkspace sharedWorkspace] openURL:url];
 }
 
 - (void)recordImage:(NSImage *)image {
     NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
     if (lastImage && (!bPause.state || !image)) {
         recordedTime += now - lastImageTime;
-        [images addObject:lastImage];
-        [times addObject:[NSNumber numberWithDouble:recordedTime]];
+        [movieBuilder addWithTime:recordedTime image:image];
     }
 
     lastImageTime = now;
