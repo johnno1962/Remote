@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#6 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#11 $
 //
 
 #import <sys/sysctl.h>
@@ -15,6 +15,8 @@
 #import <arpa/inet.h>
 #import <netdb.h>
 #import <zlib.h>
+
+#import "RemoteHeaders.h"
 
 #ifndef REMOTE_PORT
 #define INJECTION_PORT 31442
@@ -108,11 +110,9 @@ struct _rmframe {
     rmpixel_t *buffer, *buffend;
     CGContextRef cg;
 }
-
-#ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
-+ (void)startCapture:(NSString *)addrs;
-+ (void)shutdown;
-#endif
+- (instancetype)initFrame:(const struct _rmframe *)frame;
+- (NSData *)subtractAndEncode:(RemoteCapture *)prevbuff;
+- (CGImageRef)cgImage;
 @end
 
 @protocol RemoteDelegate <NSObject>
@@ -128,7 +128,11 @@ struct _rmframe {
 #else
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
-#import "RemoteHeaders.h"
+
+@interface RemoteCapture(Client)
++ (void)startCapture:(NSString *)addrs;
++ (void)shutdown;
+@end
 
 static NSTimeInterval timestamp0;
 static UITouch *currentTouch;

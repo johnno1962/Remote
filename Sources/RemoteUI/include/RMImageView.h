@@ -1,5 +1,5 @@
 //
-//  RPImageView.h
+//  RMImageView.h
 //  Remote
 //
 //  Created by John Holdsworth on 24/12/2014.
