@@ -3,6 +3,7 @@
 //  Remote
 //
 
+#ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
 #import <UIKit/UIKit.h>
 
 #define __CFDictionary NSDictionary
@@ -329,4 +330,4 @@ typedef CFTypeRef __GSEvent;
 - (void)setSingleAllowableExternalTouchPathIndex:(long)a0 ;
 
 @end
-
+#endif

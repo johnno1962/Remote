@@ -6,8 +6,11 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#6 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#7 $
 //
+
+#import <Foundation/Foundation.h>
+#import <CoreGraphics/CoreGraphics.h>
 
 #import <sys/sysctl.h>
 #import <netinet/tcp.h>
@@ -15,6 +18,8 @@
 #import <arpa/inet.h>
 #import <netdb.h>
 #import <zlib.h>
+
+#import "RemoteHeaders.h"
 
 #ifndef REMOTE_PORT
 #define INJECTION_PORT 31442
@@ -45,9 +50,6 @@
 #else
 #define RMDebug while(0) NSLog
 #endif
-
-#import <Foundation/Foundation.h>
-#import <CoreGraphics/CoreGraphics.h>
 
 #ifdef REMOTE_LEGACY
 static BOOL remoteLegacy = TRUE;
@@ -128,7 +130,6 @@ struct _rmframe {
 #else
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
-#import "RemoteHeaders.h"
 
 static NSTimeInterval timestamp0;
 static UITouch *currentTouch;
