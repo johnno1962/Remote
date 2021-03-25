@@ -1,9 +1,11 @@
 //
-//  RPDeviceController.h
+//  RMDeviceController.h
 //  Remote
 //
 //  Created by John Holdsworth on 21/12/2014.
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
+//
+//  $Id: //depot/Remote/Sources/RemoteUI/include/RMDeviceController.h#3 $
 //
 
 #import <Cocoa/Cocoa.h>

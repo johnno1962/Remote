@@ -1,12 +1,12 @@
 //
-//  RPDeviceController.m
+//  RMDeviceController.m
 //  Replay
 //
 //  Created by John Holdsworth on 21/12/2014.
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#9 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#10 $
 //
 
 #define REMOTE_IMPL

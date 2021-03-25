@@ -1,5 +1,5 @@
 //
-//  RPWindowController.h
+//  RMWindowController.h
 //  Remote
 //
 //  Created by John Holdsworth on 20/12/2014.

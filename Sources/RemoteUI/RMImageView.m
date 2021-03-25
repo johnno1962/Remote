@@ -1,5 +1,5 @@
 //
-//  RPImageView.m
+//  RMImageView.m
 //  Remote
 //
 //  Created by John Holdsworth on 24/12/2014.

@@ -1,12 +1,12 @@
 //
-//  RPWindowController.m
+//  RMWindowController.m
 //  Remote
 //
 //  Created by John Holdsworth on 20/12/2014.
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMWindowController.m#3 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMWindowController.m#4 $
 //
 
 #import "RMWindowController.h"
