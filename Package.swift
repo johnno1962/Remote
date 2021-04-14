@@ -4,6 +4,26 @@
 //
 
 import PackageDescription
+import Foundation
+
+let pipe = Pipe()
+let proc = Process()
+proc.launchPath = "/bin/ifconfig"
+proc.arguments = ["en0"]
+proc.standardOutput = pipe.fileHandleForReading
+proc.launch()
+proc.waitUntilExit()
+
+var addr = "localhost"
+if let info = String(data:
+    pipe.fileHandleForWriting
+        .availableData, encoding: .utf8) {
+    print(info)
+    addr = info.replacingOccurrences(of:
+    "^[^^]*inet\\s(\\S+)\\s[^^]*$",
+     with: "$1", options: .regularExpression)
+}
+print(addr)
 
 let package = Package(
     name: "RemotePlugin",
