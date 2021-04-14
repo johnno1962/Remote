@@ -26,7 +26,7 @@ addr.sin_len = UInt8(MemoryLayout.size(ofValue: addr))
 addr.sin_port = 0
 addr.sin_addr.s_addr = htonl(INADDR_ANY)
 if bind(sock, rebind(&addr), socklen_t(addr.sin_len)) < 0 {
-    print("no bind")
+    print("no bind \(String(cString: strerror(errno)))")
 }
 if getsockname(sock, rebind(&addr), rebind(&addr.sin_len)) < 0 {
     print("no name")
