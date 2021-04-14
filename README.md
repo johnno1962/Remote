@@ -9,16 +9,14 @@ editable WebView that can be modified at will. Finally, you can now
 record and save all display output into a quicktime movie.
 
 **Update:** This former Xcode plugin has been re-organised into a
-Swift Package for use in other apps. Use the `RemoteCapture` product
-in client applications and the `RemoteUI` product at the server side.
-To use remote simply add this project as a Swift package and the
-`RemoteCapture` target will connect automatically from the simulator. You
-need to be running an application containg the `RemoteUI` target such as
-[InjectionIII](https://github.com/johnno1962/InjectionIII) or the
-[HotReloading](https://github.com/johnno1962/HotReloading) demon with
+Swift Package for use in other apps. To use `Remote`, simply add this
+project as a Swift package and the `RemoteCapture` target to your app.
+It will connect automatically using the hostname of your desktop. You
+also need to be running an application containg the `RemoteUI` target
+such as [InjectionIII](https://github.com/johnno1962/InjectionIII) or the
+[HotReloading](https://github.com/johnno1962/HotReloading) daemon with
 "Remote Control" enabled to receive connections and render your device's
-screen. To connect from a real device, clone this project and provide a different value for 
-`REMOTEPLUGIN_SERVERIPS` in the file `Sources/RemoteCapture/RemoteImpl.m`.
+screen.
 
 ![Icon](http://injectionforxcode.johnholdsworth.com/remote.gif)
 
