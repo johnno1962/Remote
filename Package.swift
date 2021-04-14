@@ -54,7 +54,7 @@ import Foundation
 
 var hostname = [Int8](repeating: 0, count: 200)
 gethostname(&hostname, hostname.count)
-print(hostname)
+print(String(cString: hostname))
 
 let package = Package(
     name: "RemotePlugin",
