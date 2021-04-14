@@ -52,9 +52,9 @@ import Foundation
 //     with: "$1", options: .regularExpression)
 //}
 
-var hostname = [Int8](repeating: 0, count: 200)
-gethostname(&hostname, hostname.count)
-print(String(cString: hostname))
+var buffer = [Int8](repeating: 0, count: 200)
+gethostname(&buffer, buffer.count)
+let hostname = String(cString: buffer)
 
 let package = Package(
     name: "RemotePlugin",
@@ -66,7 +66,8 @@ let package = Package(
     ],
     dependencies: [],
     targets: [
-        .target(name: "RemoteCapture"),
+        .target(name: "RemoteCapture",
+                cSettings: [.define("REMOTEPLUGIN_SERVERIPS", to: hostname)]),
         .target(name: "RemoteMovie"),
         .target(name: "RemoteUI", dependencies: ["RemoteCapture", "RemoteMovie"]),
     ]
