@@ -11,14 +11,14 @@ record and save all display output into a quicktime movie.
 **Update:** This former Xcode plugin has been re-organised into a
 Swift Package for use in other apps. Use the `RemoteCapture` product
 in client applications and the `RemoteUI` product at the server side.
-
-### Stop Press
-
-Remote is now available as part of the Injection standalone App
-[available here](https://github.com/johnno1962/InjectionIII) and
-as a SPM Swift Package. Use `RemoteCapture.start("list of host names")`
-to start capture once you have used the menu item
-`Remote Control/Start Server` in the InjectionIII App.
+To use remote simply add this project as a Swift package and the
+`RemoteCapture` target will connect automatically from the simulator. You
+need to be running an application containg the `RemoteUI` target such as
+[InjectionIII](https://github.com/johnno1962/InjectionIII) or the
+[HotReloading](https://github.com/johnno1962/HotReloading) demon with
+"Remote Control" enabled to receive connections and render your device's
+screen. To connect from a real device, clone this project and provide a different value for 
+`REMOTEPLUGIN_SERVERIPS` in the file `Sources/RemoteCapture/RemoteImpl.m`.
 
 ![Icon](http://injectionforxcode.johnholdsworth.com/remote.gif)
 
