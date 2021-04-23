@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#11 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#14 $
 //
 
 #import <sys/sysctl.h>
@@ -316,6 +316,10 @@ static NSMutableArray<NSValue *> *connections;
 }
 
 + (BOOL)startBackground:(NSString *)addrs {
+    if (connections) {
+        NSLog(@"RemoteCapture: Already connected. Use branch no-autoconnect if you wish to connect manually to multiple hosts.");
+        return NO;
+    }
     connections = [NSMutableArray new];
     for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
         NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
