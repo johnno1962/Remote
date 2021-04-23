@@ -6,7 +6,7 @@
 //  Adapted for macOS under MIT License from:
 //  https://github.com/acj/TimeLapseBuilder-Swift
 //
-//  $Id: //depot/Remote/Sources/RemoteMovie/TimeLapseBuilder.swift#5 $
+//  $Id: //depot/Remote/Sources/RemoteMovie/TimeLapseBuilder.swift#6 $
 //
 
 import AVFoundation
@@ -24,7 +24,7 @@ let kFailedToAppendPixelBufferError = 1
 let kFailedToDetermineAssetDimensions = 2
 let kFailedToProcessAssetPath = 3
 
-@objc public protocol TimelapseBuilderDelegate: class {
+@objc public protocol TimelapseBuilderDelegate: AnyObject {
     func timeLapseBuilder(_ timelapseBuilder: TimeLapseBuilder, didMakeProgress progress: Progress)
     func timeLapseBuilder(_ timelapseBuilder: TimeLapseBuilder, didFinishWithURL url: URL)
     func timeLapseBuilder(_ timelapseBuilder: TimeLapseBuilder, didFailWithError error: Error)
