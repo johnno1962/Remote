@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#12 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#14 $
 //
 
 #define REMOTE_IMPL
@@ -321,6 +321,9 @@
         case RMTouchStationary: phaseString = @"Stationary"; break;
         case RMTouchEnded: phaseString = @"Ended"; break;
         case RMTouchCancelled: phaseString = @"Cancelled"; break;
+        case RMTouchRegionEntered: phaseString = @"Tracked"; break;
+        case RMTouchRegionMoved: phaseString = @"Oved"; break;
+        case RMTouchRegionExited: phaseString = @"Xited"; break;
         default: phaseString = @"Unknown";
     }
     return [NSMutableString stringWithFormat:@"%@ t:%.3f",

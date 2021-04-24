@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#14 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#19 $
 //
 
 #import <sys/sysctl.h>
@@ -68,6 +68,9 @@ typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchEnded,
     RMTouchCancelled,
     RMTouchUseScale,
+    RMTouchRegionEntered,
+    RMTouchRegionMoved,
+    RMTouchRegionExited
 };
 
 #define RMMAX_TOUCHES 2
@@ -137,6 +140,7 @@ struct _rmframe {
 static NSTimeInterval timestamp0;
 static UITouch *currentTouch;
 static NSSet *currentTouches;
+static BOOL lateJoiners;
 
 @interface BCEvent : UIEvent {
 @public
@@ -316,11 +320,7 @@ static NSMutableArray<NSValue *> *connections;
 }
 
 + (BOOL)startBackground:(NSString *)addrs {
-    if (connections) {
-        NSLog(@"RemoteCapture: Already connected. Use branch no-autoconnect if you wish to connect manually to multiple hosts.");
-        return NO;
-    }
-    connections = [NSMutableArray new];
+    NSMutableArray *newConnections = [NSMutableArray new];
     for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
         NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
         NSString *inaddr = parts[0];
@@ -332,14 +332,40 @@ static NSMutableArray<NSValue *> *connections;
             NSLog(@"RemoteCapture: Connected to %@:%d.", inaddr, port);
             FILE *writeFp = fdopen(remoteSocket, "w");
             setbuf(writeFp, NULL);
-            [connections addObject:[NSValue valueWithPointer:writeFp]];
+            [newConnections addObject:[NSValue valueWithPointer:writeFp]];
         }
     }
-    if (!connections.count)
+    if (!newConnections.count)
         return FALSE;
 
-    [self performSelectorOnMainThread:@selector(runCapture)
-                           withObject:nil waitUntilDone:NO];
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        connections = [NSMutableArray new];
+        [self initCapture];
+    });
+    [connections addObjectsFromArray:newConnections];
+    lateJoiners = TRUE;
+
+    char *key = strdup(REMOTE_KEY.UTF8String);
+    int32_t keylen = (int)strlen(key);
+    for (int i=0 ; i<keylen; i++)
+        key[i] ^= REMOTE_XOR;
+    device.magic = REMOTE_MAGIC;
+
+    timestamp0 = [NSDate timeIntervalSinceReferenceDate];
+
+    for (NSValue *fp in newConnections) {
+        if (fwrite(&device, 1, sizeof device, fp.pointerValue) != sizeof device)
+            NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
+        else if (fwrite(&keylen, 1, sizeof keylen, fp.pointerValue) != sizeof keylen)
+            NSLog(@"%@: Could not write keylen: %s", self, strerror(errno));
+        else if (fwrite(key, 1, keylen, fp.pointerValue) != keylen)
+            NSLog(@"%@: Could not write key: %s", self, strerror(errno));
+        else
+            [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
+    }
+
+    free(key);
     return TRUE;
 }
 
@@ -388,29 +414,26 @@ static Class UIWindowLayer;
 static UITouch *realTouch;
 static CGSize bufferSize;
 
-+ (void)runCapture {
++ (void)initCapture {
     bufferSize.width = 0.0;
 
     while (!(screens = [UIScreen screens]).count)
         [NSThread sleepForTimeInterval:.5];
 
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        UIWindowLayer = objc_getClass("UIWindowLayer");
+    UIWindowLayer = objc_getClass("UIWindowLayer");
 #if 01
-        method_exchangeImplementations(
-            class_getInstanceMethod(CALayer.class, @selector(_copyRenderLayer:layerFlags:commitFlags:)),
-            class_getInstanceMethod(CALayer.class, @selector(in_copyRenderLayer:layerFlags:commitFlags:)));
+    method_exchangeImplementations(
+        class_getInstanceMethod(CALayer.class, @selector(_copyRenderLayer:layerFlags:commitFlags:)),
+        class_getInstanceMethod(CALayer.class, @selector(in_copyRenderLayer:layerFlags:commitFlags:)));
 #else
-        method_exchangeImplementations(
-            class_getInstanceMethod(CALayer.class, @selector(_didCommitLayer:)),
-            class_getInstanceMethod(CALayer.class, @selector(in_didCommitLayer:)));
+    method_exchangeImplementations(
+        class_getInstanceMethod(CALayer.class, @selector(_didCommitLayer:)),
+        class_getInstanceMethod(CALayer.class, @selector(in_didCommitLayer:)));
 #endif
 
-        method_exchangeImplementations(
-            class_getInstanceMethod(UIApplication.class, @selector(sendEvent:)),
-            class_getInstanceMethod(UIApplication.class, @selector(in_sendEvent:)));
-    });
+    method_exchangeImplementations(
+        class_getInstanceMethod(UIApplication.class, @selector(sendEvent:)),
+        class_getInstanceMethod(UIApplication.class, @selector(in_sendEvent:)));
 
     device.version = REMOTE_VERSION;
 
@@ -427,29 +450,9 @@ static CGSize bufferSize;
     device.scale = [screens[0] scale];
     device.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
 
-    char *key = strdup(REMOTE_KEY.UTF8String);
-    int32_t keylen = (int)strlen(key);
-    for (int i=0 ; i<keylen; i++)
-        key[i] ^= REMOTE_XOR;
-    device.magic = REMOTE_MAGIC;
-
-    timestamp0 = [NSDate timeIntervalSinceReferenceDate];
-
     if (!writeQueue)
         writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
 
-    for (NSValue *fp in connections) {
-        if (fwrite(&device, 1, sizeof device, fp.pointerValue) != sizeof device)
-            NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
-        else if (fwrite(&keylen, 1, sizeof keylen, fp.pointerValue) != sizeof keylen)
-            NSLog(@"%@: Could not write keylen: %s", self, strerror(errno));
-        else if (fwrite(key, 1, keylen, fp.pointerValue) != keylen)
-            NSLog(@"%@: Could not write key: %s", self, strerror(errno));
-        else
-            [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
-    }
-
-    free(key);
     [remoteDelegate remoteConnected:TRUE];
     [self performSelectorOnMainThread:@selector(capture:) withObject:nil waitUntilDone:NO];
 }
@@ -679,11 +682,18 @@ static BOOL capturing;
 static NSTimeInterval mostRecentScreenUpdate;
 
 + (CGRect)screenBounds {
-    NSArray<UIWindow *> *windows = UIApplication.sharedApplication.windows;
     CGRect bounds = CGRectZero;
-    for (UIWindow *window in windows)
-        if (window.bounds.size.height > bounds.size.height)
-            bounds = window.bounds;
+    while (TRUE) {
+        for (UIWindow *window in UIApplication.sharedApplication.windows)  {
+            if (window.bounds.size.height > bounds.size.height)
+                bounds = window.bounds;
+        }
+        if (bounds.size.height)
+            break;
+        else
+            [[NSRunLoop mainRunLoop]
+             runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.2]];
+    }
     return bounds;
 }
 
@@ -712,6 +722,7 @@ static NSTimeInterval mostRecentScreenUpdate;
     RemoteCapture *buffer = buffers[frameno++&1];
     RemoteCapture *prevbuff = buffers[frameno&1];
     UIImage *screenshot;
+    RMDebug(@"%@, %@ -- %@", buffers, buffer, prevbuff);
 
 //    memset(buffer->buffer, 128, (char *)buffer->buffend - (char *)buffer->buffer);
 
@@ -789,10 +800,11 @@ static NSTimeInterval mostRecentScreenUpdate;
             return;
         }
 
-        NSData *encoded = [buffer subtractAndEncode:prevbuff];
+        NSData *encoded = lateJoiners ? nil : [buffer subtractAndEncode:prevbuff];
         NSData *keyframe = [buffer subtractAndEncode:nil];
-        if (keyframe.length < encoded.length)
+        if (lateJoiners || keyframe.length < encoded.length)
             encoded = keyframe;
+        lateJoiners = FALSE;
 
         frame.length = (unsigned)encoded.length;
         if (frame.length <= REMOTE_MINDIFF) {
