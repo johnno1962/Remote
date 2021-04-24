@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#10 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#12 $
 //
 
 #define REMOTE_IMPL
@@ -64,8 +64,9 @@
     if ((self = [super init])) {
         [owner = theOwner reset];
         clientSocket = socket;
+        FILE *renderStream = fdopen(clientSocket, "r");
         NSLog(@"Initialising device from %d", clientSocket);
-        if (read(clientSocket, &device, sizeof device) != sizeof device)
+        if (fread(&device, 1, sizeof device, renderStream) != sizeof device)
             [RMWindowController error:@"Could not read device info: %s", strerror(errno)];
         else if (device.version != REMOTE_VERSION && device.version != REMOTE_NOKEY)
             [RMWindowController error:@"Invalid remote version: %d != %d",
@@ -77,12 +78,12 @@
             char *nokey = "", *key = nokey;
 
             if (device.version != REMOTE_NOKEY) {
-                if (read(clientSocket, &keylen, sizeof keylen) != sizeof keylen)
+                if (fread(&keylen, 1, sizeof keylen, renderStream) != sizeof keylen)
                     [RMWindowController error:@"Could not read keylen: %s",
                      strerror(errno)];
                 key = malloc(keylen+1);
                 key[keylen] = '\000';
-                if (!key || read(clientSocket, key, keylen) != keylen)
+                if (!key || fread(key, 1, keylen, renderStream) != keylen)
                     [RMWindowController error:@"Could not read %d bytes of key: %s",
                      keylen, strerror(errno)];
                 else {
@@ -92,7 +93,8 @@
                 free(key);
             }
 
-            [self performSelectorInBackground:@selector(renderService) withObject:nil];
+            [self performSelectorInBackground:@selector(renderService:)
+                    withObject:[NSValue valueWithPointer:renderStream]];
             return self;
         }
     }
@@ -101,8 +103,8 @@
 }
 
 // process a connection
-- (void)renderService {
-    FILE *renderStream = fdopen(clientSocket, "r");
+- (void)renderService:(NSValue *)filePtr {
+    FILE *renderStream = (FILE *)filePtr.pointerValue;
     NSArray *buffers;
     int frameno = 0;
     void *tmp = NULL;
