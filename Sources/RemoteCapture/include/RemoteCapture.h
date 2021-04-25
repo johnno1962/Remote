@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#19 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#29 $
 //
 
 #import <sys/sysctl.h>
@@ -308,6 +308,7 @@ static BOOL lateJoiners;
 
 static id<RemoteDelegate> remoteDelegate;
 static NSMutableArray<NSValue *> *connections;
+static char *connectionKey;
 
 #ifdef REMOTEPLUGIN_SERVERIPS
 + (void)load {
@@ -316,10 +317,11 @@ static NSMutableArray<NSValue *> *connections;
 #endif
 
 + (void)startCapture:(NSString *)addrs {
-    [self performSelectorInBackground:@selector(startBackground:) withObject:addrs];
+    [self performSelectorInBackground:@selector(backgroundConnect:)
+                           withObject:addrs];
 }
 
-+ (BOOL)startBackground:(NSString *)addrs {
++ (BOOL)backgroundConnect:(NSString *)addrs {
     NSMutableArray *newConnections = [NSMutableArray new];
     for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
         NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
@@ -340,32 +342,26 @@ static NSMutableArray<NSValue *> *connections;
 
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        connections = [NSMutableArray new];
         [self initCapture];
     });
-    [connections addObjectsFromArray:newConnections];
-    lateJoiners = TRUE;
 
-    char *key = strdup(REMOTE_KEY.UTF8String);
-    int32_t keylen = (int)strlen(key);
-    for (int i=0 ; i<keylen; i++)
-        key[i] ^= REMOTE_XOR;
-    device.magic = REMOTE_MAGIC;
-
-    timestamp0 = [NSDate timeIntervalSinceReferenceDate];
-
+    int32_t keylen = (int)strlen(connectionKey);
     for (NSValue *fp in newConnections) {
         if (fwrite(&device, 1, sizeof device, fp.pointerValue) != sizeof device)
             NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
         else if (fwrite(&keylen, 1, sizeof keylen, fp.pointerValue) != sizeof keylen)
             NSLog(@"%@: Could not write keylen: %s", self, strerror(errno));
-        else if (fwrite(key, 1, keylen, fp.pointerValue) != keylen)
+        else if (fwrite(connectionKey, 1, keylen, fp.pointerValue) != keylen)
             NSLog(@"%@: Could not write key: %s", self, strerror(errno));
         else
             [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
     }
 
-    free(key);
+    dispatch_async(writeQueue, ^{
+        [connections addObjectsFromArray:newConnections];
+        [self queueCapture];
+        lateJoiners = TRUE;
+    });
     return TRUE;
 }
 
@@ -415,7 +411,11 @@ static UITouch *realTouch;
 static CGSize bufferSize;
 
 + (void)initCapture {
-    bufferSize.width = 0.0;
+    connections = [NSMutableArray new];
+    timestamp0 = [NSDate timeIntervalSinceReferenceDate];
+    connectionKey = strdup(REMOTE_KEY.UTF8String);
+    for (size_t i=0, keylen = (int)strlen(connectionKey); i<keylen; i++)
+        connectionKey[i] ^= REMOTE_XOR;
 
     while (!(screens = [UIScreen screens]).count)
         [NSThread sleepForTimeInterval:.5];
@@ -430,11 +430,12 @@ static CGSize bufferSize;
         class_getInstanceMethod(CALayer.class, @selector(_didCommitLayer:)),
         class_getInstanceMethod(CALayer.class, @selector(in_didCommitLayer:)));
 #endif
-
     method_exchangeImplementations(
         class_getInstanceMethod(UIApplication.class, @selector(sendEvent:)),
         class_getInstanceMethod(UIApplication.class, @selector(in_sendEvent:)));
 
+    // set up device description struct
+    device.magic = REMOTE_MAGIC;
     device.version = REMOTE_VERSION;
 
     size_t size = sizeof device.machine-1;
@@ -450,11 +451,8 @@ static CGSize bufferSize;
     device.scale = [screens[0] scale];
     device.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
 
-    if (!writeQueue)
-        writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
-
+    writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
     [remoteDelegate remoteConnected:TRUE];
-    [self performSelectorOnMainThread:@selector(capture:) withObject:nil waitUntilDone:NO];
 }
 
 + (void)processEvents:(NSValue *)writeFp {
