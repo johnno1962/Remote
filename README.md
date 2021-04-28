@@ -16,7 +16,10 @@ also need to be running an application containg the `RemoteUI` target
 such as [InjectionIII](https://github.com/johnno1962/InjectionIII) or the
 [HotReloading](https://github.com/johnno1962/HotReloading) daemon with
 "Remote Control" enabled to receive connections and render your device's
-screen.
+screen. By default, adding the package to a project will have it try to
+connect to a process running the remote UI. The package manifest
+compiles your hostname into the package so it should be able to
+connect from a device.
 
 ![Icon](http://injectionforxcode.johnholdsworth.com/remote.gif)
 
