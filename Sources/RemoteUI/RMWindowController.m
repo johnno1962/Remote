@@ -123,7 +123,11 @@ static int serverSocket;
                 lastRMWindowController.window.title =
                     [NSString stringWithFormat:@"%s: %s (%@)",
                      REMOTE_APPNAME,
+#ifndef REMOTE_MINICAP
                      lastRMWindowController.device->device.hostname,
+#else
+                     ipAddr.UTF8String,
+#endif
                      ipAddr];
             });
         }
