@@ -18,17 +18,11 @@
 
 #import "RemoteHeaders.h"
 
-#define REMOTE_MINICAP
-
 #ifndef REMOTE_PORT
 #define INJECTION_PORT 31442
 #define APPCODE_PORT 31444
 #define XPROBE_PORT 31448
-#ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
 #define REMOTE_PORT 31449
-#else
-#define REMOTE_PORT 1313
-#endif
 #endif
 
 #ifndef REMOTE_APPNAME
@@ -37,6 +31,7 @@
 #define REMOTE_MAGIC -141414141
 #define REMOTE_MINDIFF (4*sizeof(rmencoded_t))
 #define REMOTE_COMPRESSED_OFFSET 1000000000
+#define MINICAP_VERSION 1
 #define REMOTE_VERSION 4
 #define REMOTE_NOKEY 3
 #define REMOTE_KEY @__FILE__
@@ -76,7 +71,8 @@ typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchUseScale,
     RMTouchRegionEntered,
     RMTouchRegionMoved,
-    RMTouchRegionExited
+    RMTouchRegionExited,
+    RMTouchSendText = 100
 };
 
 #define RMMAX_TOUCHES 2
@@ -95,26 +91,29 @@ struct _rmevent {
 
 struct _rmdevice {
     char version;
-#ifndef REMOTE_MINICAP
-    char machine[24];
-    char appname[64];
-    char appvers[24];
-    char hostname[63];
-    float scale;
-    int isIPad;
-    char expansion[64];
-    int magic;
-#else // REMOTE_MINICAP
-// See: https://github.com/openstf/minicap#usage
-    char headerSize;
-    char pid[4];
-    char realWidth[4];
-    char realHeight[4];
-    char virtualWidth[4];
-    char virtualHeight[4];
-    unsigned char orientation;
-    unsigned char quirks;
-#endif
+    union {
+        struct {
+            char machine[24];
+            char appname[64];
+            char appvers[24];
+            char hostname[63];
+            char scale[4]; // float
+            char isIPad[4]; // int
+            char expansion[64];
+            char magic[4]; // int
+        } remote;
+        struct {
+            // See: https://github.com/openstf/minicap#usage
+            char headerSize;
+            char pid[4];
+            char realWidth[4];
+            char realHeight[4];
+            char virtualWidth[4];
+            char virtualHeight[4];
+            unsigned char orientation;
+            unsigned char quirks;
+        } minicap;
+    };
 };
 
 struct _rmframe {
@@ -134,6 +133,10 @@ struct _rmframe {
 - (instancetype)initFrame:(const struct _rmframe *)frame;
 - (NSData *)subtractAndEncode:(RemoteCapture *)prevbuff;
 - (CGImageRef)cgImage;
+@end
+
+@interface NSObject(UITextField)
+- (void)insertFilteredText:(NSString *)str;
 @end
 
 @protocol RemoteDelegate <NSObject>
@@ -365,14 +368,16 @@ static char *connectionKey;
 
     int32_t keylen = (int)strlen(connectionKey);
     for (NSValue *fp in newConnections) {
-        if (fwrite(&device, 1, sizeof device, fp.pointerValue) != sizeof device)
-            NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
-#ifndef REMOTE_MINICAP
-        else if (fwrite(&keylen, 1, sizeof keylen, fp.pointerValue) != sizeof keylen)
-            NSLog(@"%@: Could not write keylen: %s", self, strerror(errno));
-        else if (fwrite(connectionKey, 1, keylen, fp.pointerValue) != keylen)
-            NSLog(@"%@: Could not write key: %s", self, strerror(errno));
-#endif
+         int headerSize = 1 + (device.version == MINICAP_VERSION ?
+            sizeof device.minicap : sizeof device.remote);
+        if (fwrite(&device, 1, headerSize, fp.pointerValue) != headerSize)
+            NSLog(@"%s: Could not write device info: %s", REMOTE_APPNAME, strerror(errno));
+        else if (device.version != MINICAP_VERSION &&
+                 fwrite(&keylen, 1, sizeof keylen, fp.pointerValue) != sizeof keylen)
+            NSLog(@"%s: Could not write keylen: %s", REMOTE_APPNAME, strerror(errno));
+        else if (device.version != MINICAP_VERSION &&
+                 fwrite(connectionKey, 1, keylen, fp.pointerValue) != keylen)
+            NSLog(@"%s: Could not write key: %s", REMOTE_APPNAME, strerror(errno));
         else
             [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
     }
@@ -382,6 +387,7 @@ static char *connectionKey;
         [self queueCapture];
         lateJoiners = TRUE;
     });
+    [remoteDelegate remoteConnected:TRUE];
     return TRUE;
 }
 
@@ -433,6 +439,7 @@ static CGSize bufferSize;
 + (void)initCapture {
     connections = [NSMutableArray new];
     timestamp0 = [NSDate timeIntervalSinceReferenceDate];
+    writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
     connectionKey = strdup(REMOTE_KEY.UTF8String);
     for (size_t i=0, keylen = (int)strlen(connectionKey); i<keylen; i++)
         connectionKey[i] ^= REMOTE_XOR;
@@ -450,38 +457,39 @@ static CGSize bufferSize;
         class_getInstanceMethod(CALayer.class, @selector(_didCommitLayer:)),
         class_getInstanceMethod(CALayer.class, @selector(in_didCommitLayer:)));
 #endif
-#ifndef REMOTE_MINICAP
     method_exchangeImplementations(
         class_getInstanceMethod(UIApplication.class, @selector(sendEvent:)),
         class_getInstanceMethod(UIApplication.class, @selector(in_sendEvent:)));
+#ifndef REMOTE_MINICAP
 
     // set up device description struct
-    device.magic = REMOTE_MAGIC;
     device.version = REMOTE_VERSION;
+    *(int *)device.remote.magic = REMOTE_MAGIC;
 
-    size_t size = sizeof device.machine-1;
-    sysctlbyname("hw.machine", device.machine, &size, NULL, 0);
-    device.machine[size] = '\000';
+    size_t size = sizeof device.remote.machine-1;
+    sysctlbyname("hw.machine", device.remote.machine, &size, NULL, 0);
+    device.remote.machine[size] = '\000';
 
     NSDictionary *infoDict = [NSBundle mainBundle].infoDictionary;
-    strncpy(device.appname, [infoDict[@"CFBundleIdentifier"] UTF8String]?:"", sizeof device.appname-1);
-    strncpy(device.appvers, [infoDict[@"CFBundleShortVersionString"] UTF8String]?:"", sizeof device.appvers-1);
+    strncpy(device.remote.appname, [infoDict[@"CFBundleIdentifier"] UTF8String]?:"", sizeof device.remote.appname-1);
+    strncpy(device.remote.appvers, [infoDict[@"CFBundleShortVersionString"] UTF8String]?:"", sizeof device.remote.appvers-1);
 
-    gethostname(device.hostname, sizeof device.hostname-1);
+    gethostname(device.remote.hostname, sizeof device.remote.hostname-1);
 
-    device.scale = [screens[0] scale];
-    device.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    *(float *)device.remote.scale = [screens[0] scale];
+    *(int *)device.remote.isIPad =
+        [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
 #else
-    device.version = 1;
-    device.headerSize = sizeof(device);
-    *(uint32_t *)device.pid = getpid();
-    *(uint32_t *)device.virtualWidth = screens[0].bounds.size.width;
-    *(uint32_t *)device.virtualHeight = screens[0].bounds.size.width;
-    *(uint32_t *)device.realWidth = *(uint32_t *)device.virtualWidth * [screens[0] scale];
-    *(uint32_t *)device.realHeight = *(uint32_t *)device.virtualHeight * [screens[0] scale];
+    device.version = MINICAP_VERSION;
+    device.minicap.headerSize = sizeof(device.version) + sizeof(device.minicap);
+    *(uint32_t *)device.minicap.pid = getpid();
+    *(uint32_t *)device.minicap.virtualWidth = screens[0].bounds.size.width;
+    *(uint32_t *)device.minicap.virtualHeight = screens[0].bounds.size.width;
+    *(uint32_t *)device.minicap.realWidth =
+        *(uint32_t *)device.minicap.virtualWidth * [screens[0] scale];
+    *(uint32_t *)device.minicap.realHeight =
+        *(uint32_t *)device.minicap.virtualHeight * [screens[0] scale];
 #endif
-    writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
-    [remoteDelegate remoteConnected:TRUE];
 }
 
 + (void)processEvents:(NSValue *)writeFp {
@@ -499,6 +507,15 @@ static CGSize bufferSize;
         BCEvent *fakeEvent = [BCEvent new];
         fakeEvent->_timestamp = timestamp;
 
+        NSString *sentText;
+        if (rpevent.phase >= RMTouchSendText) {
+            size_t textSize = rpevent.phase - RMTouchSendText;
+            char *buffer = malloc(textSize + 1);
+            textSize = fread(buffer, 1, textSize, readFp);
+            buffer[textSize] = '\000';
+            sentText = [NSString stringWithUTF8String:buffer];
+        }
+
         dispatch_sync(dispatch_get_main_queue(), ^{
             CGPoint location = {rpevent.touches[0].x, rpevent.touches[0].y},
                 location2 = {rpevent.touches[1].x, rpevent.touches[1].y};
@@ -514,6 +531,11 @@ static CGSize bufferSize;
                 event = [[objc_getClass("UITouchesEvent") alloc] _init];
 
             inhibitEcho = writeFp;
+
+            if (sentText) {
+                [textField insertFilteredText:sentText];
+                return;
+            }
 
             switch (rpevent.phase) {
 
@@ -688,7 +710,7 @@ static CGSize bufferSize;
         });
     }
 
-    NSLog(@"RemoteCapture: processEvents exits");
+    NSLog(@"%s: processEvents: exits", REMOTE_APPNAME);
     fclose(readFp);
 
     [connections removeObject:writeFp];
@@ -731,11 +753,8 @@ static NSTimeInterval mostRecentScreenUpdate;
     UIScreen *screen = [UIScreen mainScreen];
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
-#ifndef REMOTE_MINICAP
-    CGFloat imageScale = device.isIPad || device.scale == 3. ? 1. : screen.scale;
-#else
-    CGFloat imageScale = 1.0;
-#endif
+    CGFloat imageScale = device.version == MINICAP_VERSION ? 1. :
+        *(int *)device.remote.isIPad || *(float *)device.remote.scale == 3. ? 1. : screen.scale;
     __block struct _rmframe frame = {[NSDate timeIntervalSinceReferenceDate],
         {{(float)screenSize.width, (float)screenSize.height, (float)imageScale}}, 0};
 
@@ -815,55 +834,57 @@ static NSTimeInterval mostRecentScreenUpdate;
             return;
         }
 
-#ifndef REMOTE_MINICAP
-        if (screenshot)
-            CGContextDrawImage(buffer->cg, CGRectMake(0, 0,
-                            screenSize.width, screenSize.height), screenshot.CGImage);
+        NSData *encoded;
+        if (device.version == MINICAP_VERSION)
+            encoded = UIImageJPEGRepresentation(screenshot, 0.8);
+        else {
+            if (screenshot)
+                CGContextDrawImage(buffer->cg, CGRectMake(0, 0,
+                                screenSize.width, screenSize.height), screenshot.CGImage);
 
-        BOOL blankImage = TRUE;
-        for (const rmpixel_t *curr = buffer->buffer; curr < buffer->buffend; curr++)
-            if (*curr & 0xffffff00) {
-                blankImage = FALSE;
-                break;
+            BOOL blankImage = TRUE;
+            for (const rmpixel_t *curr = buffer->buffer; curr < buffer->buffend; curr++)
+                if (*curr & 0xffffff00) {
+                    blankImage = FALSE;
+                    break;
+                }
+            if (blankImage) {
+                [self performSelector:@selector(queueCapture) withObject:nil afterDelay:0.1];
+                frameno--;
+                return;
             }
-        if (blankImage) {
-            [self performSelector:@selector(queueCapture) withObject:nil afterDelay:0.1];
-            frameno--;
-            return;
-        }
 
-        NSData *encoded = lateJoiners ? nil : [buffer subtractAndEncode:prevbuff];
-        NSData *keyframe = [buffer subtractAndEncode:nil];
-        if (lateJoiners || keyframe.length < encoded.length)
-            encoded = keyframe;
-        lateJoiners = FALSE;
+            encoded = lateJoiners ? nil : [buffer subtractAndEncode:prevbuff];
+            NSData *keyframe = [buffer subtractAndEncode:nil];
+            if (lateJoiners || keyframe.length < encoded.length)
+                encoded = keyframe;
+            lateJoiners = FALSE;
 
-        frame.length = (unsigned)encoded.length;
-        if (frame.length <= REMOTE_MINDIFF) {
-            frameno--;
-            return;
-        }
+            frame.length = (unsigned)encoded.length;
+            if (frame.length <= REMOTE_MINDIFF) {
+                frameno--;
+                return;
+            }
 
 #ifdef REMOTE_COMPRESSION
-        struct _rmcompress *buff = malloc(sizeof buff->bytes + encoded.length + 100);
-        uLongf clen = buff->bytes = (unsigned)encoded.length;
-        if (compress2(buff->data, &clen, (const Bytef *)encoded.bytes,
-                      buff->bytes, Z_BEST_SPEED) == Z_OK && clen < encoded.length) {
-            encoded = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
-            RMLog(@"Remote: Delta image %d/%d %.1f%%", (int)encoded.length, frame.length, 100.*encoded.length/frame.length);
-            frame.length = REMOTE_COMPRESSED_OFFSET + (int)encoded.length;
+            struct _rmcompress *buff = malloc(sizeof buff->bytes + encoded.length + 100);
+            uLongf clen = buff->bytes = (unsigned)encoded.length;
+            if (compress2(buff->data, &clen, (const Bytef *)encoded.bytes,
+                          buff->bytes, Z_BEST_SPEED) == Z_OK && clen < encoded.length) {
+                encoded = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
+                RMLog(@"Remote: Delta image %d/%d %.1f%%", (int)encoded.length, frame.length, 100.*encoded.length/frame.length);
+                frame.length = REMOTE_COMPRESSED_OFFSET + (int)encoded.length;
+            }
+#endif
         }
-#endif
-#else
-        NSData *encoded = UIImageJPEGRepresentation(screenshot, 0.8);
-#endif
 
         for (NSValue *writeFp in connections) {
             FILE *fp = (FILE *)writeFp.pointerValue;
-#ifdef REMOTE_MINICAP
-            uint32_t frame = (uint32_t)encoded.length;
-#endif
-            if (fwrite(&frame, 1, sizeof frame, fp) != sizeof frame)
+            uint32_t frameSize = (uint32_t)encoded.length;
+            int frameHeaderSize = device.version == MINICAP_VERSION ?
+                                    sizeof frameSize : sizeof frame;
+            if (fwrite(device.version == MINICAP_VERSION ? (void *)&frameSize :
+                        (void *)&frame, 1, frameHeaderSize, fp) != frameHeaderSize)
                 NSLog(@"RemoteCapture: Could not write bounds: %s", strerror(errno));
             else if (fwrite(encoded.bytes, 1, encoded.length, fp) != encoded.length)
                 NSLog(@"RemoteCapture: Could not write encoded: %s", strerror(errno));
@@ -927,6 +948,9 @@ static NSTimeInterval mostRecentScreenUpdate;
         RMLog(@"Gestures: %@", t.gestureRecognizers);
 #endif
 
+    if (device.version == MINICAP_VERSION && REMOTE_PORT != 31449)
+        return;
+
     struct _rmframe header;
     header.timestamp = [NSDate timeIntervalSinceReferenceDate];
     header.length = (int)-touches.count;
@@ -938,9 +962,14 @@ static NSTimeInterval mostRecentScreenUpdate;
         header.y = loc.y;
         NSData *out = [NSData dataWithBytes:&header length:sizeof header];
         dispatch_async(writeQueue, ^{
+            int32_t minlen = header.length;
             for (NSValue *fp in connections) {
-                if (fp != incomingFp &&
-                    fwrite(out.bytes, 1, out.length, fp.pointerValue) != out.length)
+                if (fp == incomingFp)
+                    continue;
+                if (device.version == MINICAP_VERSION &&
+                    fwrite(&minlen, 1, sizeof minlen, fp.pointerValue) != sizeof minlen)
+                    NSLog(@"RemoteCapture: Could not write event: %s", strerror(errno));
+                else if (fwrite(out.bytes, 1, out.length, fp.pointerValue) != out.length)
                     NSLog(@"RemoteCapture: Could not write event: %s", strerror(errno));
             }
         });

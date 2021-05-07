@@ -44,6 +44,7 @@
 
 - (void)sendEvent:(NSEvent *)theEvent phase:(RMTouchPhase)phase;
 - (void)writeEvent:(const struct _rmevent *)event;
+- (void)sendText:(NSString *)text;
 - (void)shutdown;
 
 - (NSString *)snapshot:(RemoteCapture *)reference withFormat:(NSString *)format;

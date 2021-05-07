@@ -65,14 +65,21 @@
         [owner = theOwner reset];
         clientSocket = socket;
         FILE *renderStream = fdopen(clientSocket, "r");
-        NSLog(@"Initialising device from %d", clientSocket);
-        if (fread(&device, 1, sizeof device, renderStream) != sizeof device)
-            [RMWindowController error:@"Could not read device info: %s", strerror(errno)];
-#ifndef REMOTE_MINICAP
+        NSLog(@"Initialising device from fd #%d", clientSocket);
+        if (fread(&device.version, 1, sizeof device.version, renderStream) != sizeof device.version)
+            [RMWindowController error:@"Could not read device version: %s", strerror(errno)];
+        else if (device.version == MINICAP_VERSION &&
+                 fread(&device.minicap, 1, sizeof device.minicap, renderStream) == sizeof device.minicap) {
+            [self performSelectorInBackground:@selector(renderService:)
+                    withObject:[NSValue valueWithPointer:renderStream]];
+            return self;
+        }
         else if (device.version != REMOTE_VERSION && device.version != REMOTE_NOKEY)
             [RMWindowController error:@"Invalid remote version: %d != %d",
                   device.version, REMOTE_VERSION];
-        else if(device.magic != REMOTE_MAGIC)
+        else if (fread(&device.remote, 1, sizeof device.remote, renderStream) != sizeof device.remote)
+            [RMWindowController error:@"Could not read remote info: %s", strerror(errno)];
+        else if(*(int *)device.remote.magic != REMOTE_MAGIC)
             [RMWindowController error:@"Non-matching RemoteCapture.h?"];
         else {
             int32_t keylen = 0;
@@ -91,11 +98,11 @@
                     for (int i=0 ; i<keylen; i++)
                         key[i] ^= REMOTE_XOR;
                 }
+                NSString *source = [NSString stringWithUTF8String:key];
+                NSLog(@"%@", source);
                 free(key);
             }
-#else
-        else {
-#endif
+
             [self performSelectorInBackground:@selector(renderService:)
                     withObject:[NSValue valueWithPointer:renderStream]];
             return self;
@@ -112,33 +119,44 @@
     int tmpsize = 0;
 
     NSLog(@"renderService started %p", renderStream);
-#ifndef REMOTE_MINICAP
     NSArray *buffers;
-    int frameno = 0;
-    NSString *deviceString = [NSString stringWithFormat:@"<div>Hardware %s</div>", device.machine];
-    [(NSObject *)owner performSelectorOnMainThread:@selector(logSet:) withObject:deviceString waitUntilDone:NO];
-    deviceString = [NSString stringWithFormat:@"Host: %@", [NSString stringWithUTF8String:device.hostname]];
-    [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:) withObject:deviceString waitUntilDone:NO];
-    deviceString = [NSString stringWithFormat:@"App: %s %s", device.appname, device.appvers];
-    [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:) withObject:deviceString waitUntilDone:NO];
+
+    int frameno = 0, frameSize;
+    struct _rmframe newFrame;
+    void *framePtr;
+
+    if (device.version == MINICAP_VERSION) {
+        NSString *deviceString = [NSString stringWithFormat:
+                        @"Device w:%d h:%d iscale:%g scale:%g",
+                        *(uint32_t *)&device.minicap.virtualWidth,
+                        *(uint32_t *)&device.minicap.virtualHeight,
+                        1.0, (CGFloat)*(uint32_t *)device.minicap.realWidth /
+                                  *(uint32_t *)device.minicap.virtualWidth];
+        [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
+                                            withObject:deviceString waitUntilDone:NO];
+        NSLog(@"%@", deviceString);
+        framePtr = &newFrame.length;
+        frameSize = sizeof newFrame.length;
+    }
+    else {
+        NSString *deviceString = [NSString stringWithFormat:@"<div>Hardware %s</div>", device.remote.machine];
+        [(NSObject *)owner performSelectorOnMainThread:@selector(logSet:) withObject:deviceString waitUntilDone:NO];
+        deviceString = [NSString stringWithFormat:@"Host: %@", [NSString stringWithUTF8String:device.remote.hostname]];
+        [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:) withObject:deviceString waitUntilDone:NO];
+        deviceString = [NSString stringWithFormat:@"App: %s %s", device.remote.appname, device.remote.appvers];
+        [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:) withObject:deviceString waitUntilDone:NO];
+        framePtr = &newFrame;
+        frameSize = sizeof newFrame;
+    }
 
     // loop through frames
-    struct _rmframe newFrame;
-#else
-    uint32_t newFrame;
-    NSString *deviceString = [NSString stringWithFormat:
-                    @"Device w:%d h:%d iscale:%g scale:%g",
-                    *(uint32_t *)&device.virtualWidth, *(uint32_t *)&device.virtualHeight,
-                    1.0, (CGFloat)*(uint32_t *)device.realWidth /
-                                *(uint32_t *)device.virtualWidth];
-    [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
-                                        withObject:deviceString waitUntilDone:NO];
-    NSLog(@"%@", deviceString);
-#endif
-    while (fread(&newFrame, 1, sizeof newFrame, renderStream) == sizeof newFrame) {
-#ifndef REMOTE_MINICAP
+    while (fread(framePtr, 1, frameSize, renderStream) == frameSize) {
         // event from device
         if (newFrame.length < 0) {
+            // If minicap image length < 0 read remote event from the device
+            if (device.version == MINICAP_VERSION &&
+                fread(&newFrame, 1, sizeof newFrame, renderStream) != sizeof newFrame)
+                break;
             int touchCount = -newFrame.length;
 
             struct _rmevent event;
@@ -165,6 +183,28 @@
             continue;
         }
 
+        if (device.version == MINICAP_VERSION) {
+            if (tmpsize < newFrame.length) {
+                free(tmp);
+                tmp = malloc(newFrame.length);
+                tmpsize = newFrame.length;
+            }
+            if (fread(tmp, 1, newFrame.length, renderStream) != newFrame.length)
+                break;
+            NSData *imageData = [NSData dataWithBytesNoCopy:tmp length:newFrame.length
+                                               freeWhenDone:NO];
+            NSImage *image = [[NSImage alloc] initWithData:imageData];
+            CGRect imageRect = CGRectMake(0, 0, image.size.width, image.size.height);
+            [owner updateImage:[image CGImageForProposedRect:&imageRect context: nil hints: nil]];
+            if (frame.width != imageRect.size.width)
+                dispatch_sync(dispatch_get_main_queue(), ^{
+                    [owner resize:imageRect.size];
+                });
+            frame.width = imageRect.size.width;
+            frame.height = imageRect.size.height;
+            continue;
+        }
+
         // resize display window/NSImageView
         if (!buffers || newFrame.imageScale != frame.imageScale ||
             newFrame.width != frame.width || newFrame.height != frame.height) {
@@ -173,10 +213,10 @@
                 [owner resize:NSMakeSize(newFrame.width, newFrame.height)];
             });
 
-            deviceString = [NSString stringWithFormat:
+            NSString *deviceString = [NSString stringWithFormat:
                             @"Device w:%g h:%g iscale:%g scale:%g",
                             newFrame.width, newFrame.height,
-                            newFrame.imageScale, device.scale];
+                            newFrame.imageScale, *(float *)device.remote.scale];
             [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
                                                 withObject:deviceString waitUntilDone:NO];
 
@@ -234,29 +274,9 @@
 
         CGImageRef imageRef = [currentBuffer cgImage];
         [owner updateImage:imageRef];
-#else
-        if (tmpsize < newFrame) {
-            free(tmp);
-            tmp = malloc(newFrame);
-            tmpsize = newFrame;
-        }
-        if (fread(tmp, 1, newFrame, renderStream) != newFrame)
-            break;
-        NSData *imageData = [NSData dataWithBytesNoCopy:tmp length:newFrame
-                                           freeWhenDone:NO];
-        NSImage *image = [[NSImage alloc] initWithData:imageData];
-        CGRect imageRect = CGRectMake(0, 0, image.size.width, image.size.height);
-        [owner updateImage:[image CGImageForProposedRect:&imageRect context: nil hints: nil]];
-        if (frame.width != imageRect.size.width)
-            dispatch_sync(dispatch_get_main_queue(), ^{
-                [owner resize:imageRect.size];
-            });
-        frame.width = imageRect.size.width;
-        frame.height = imageRect.size.height;
-#endif
     }
 
-    NSLog(@"renderService exits");
+    NSLog(@"renderFrames: exits");
     fclose(renderStream);
     owner.device = nil;
     free(tmp);
@@ -343,12 +363,6 @@
     return (unsigned)out.length-REMOTE_MINDIFF;
 }
 
-- (void)writeEvent:(const struct _rmevent *)event {
-    [owner.imageView drawTouches:event];
-    if (event && write(clientSocket, event, sizeof *event) != sizeof *event)
-        NSLog(@"Remote: event write error");
-}
-
 - (NSMutableString *)startEvent:(RMTouchPhase)phase {
     NSString *phaseString;
     switch (phase) {
@@ -366,6 +380,12 @@
             phaseString, [owner timeSinceLastEvent]];
 }
 
+- (void)writeEvent:(const struct _rmevent *)event {
+    [owner.imageView drawTouches:event];
+    if (event && write(clientSocket, event, sizeof *event) != sizeof *event)
+        NSLog(@"Remote: event write error");
+}
+
 - (void)sendEvent:(NSEvent *)theEvent phase:(RMTouchPhase)phase {
     NSPoint loc = theEvent.locationInWindow;
     float locScale = frame.height/owner.imageView.frame.size.height;
@@ -378,6 +398,17 @@
     NSMutableString *arg = [self startEvent:phase];
     [arg appendFormat:@" x:%.1f y:%.1f", event.touches[0].x, event.touches[0].y];
     [owner logAdd:arg];
+}
+
+- (void)sendText:(NSString *)text {
+    const char *chars = text.UTF8String;
+    size_t len = strlen(chars);
+    struct _rmevent event = {
+        [NSDate timeIntervalSinceReferenceDate], RMTouchSendText+len, 0.0, 0.0};
+    if (write(clientSocket, &event, sizeof event) == sizeof event &&
+        write(clientSocket, chars, len) == len)
+        NSLog(@"Remote: text write error");
+    [owner logAdd:[NSString stringWithFormat:@"Text: %@", text]];
 }
 
 @end

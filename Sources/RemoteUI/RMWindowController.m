@@ -124,7 +124,7 @@ static int serverSocket;
                     [NSString stringWithFormat:@"%s: %s (%@)",
                      REMOTE_APPNAME,
 #ifndef REMOTE_MINICAP
-                     lastRMWindowController.device->device.hostname,
+                     lastRMWindowController.device->device.remote.hostname,
 #else
                      ipAddr.UTF8String,
 #endif
@@ -223,8 +223,9 @@ static CGFloat windowTitleHeight = 22.;
 
 - (void)resize:(NSSize)size {
     NSRect windowFrame = self.window.frame;
-    windowFrame.size = size;
-    windowFrame.size.height += windowTitleHeight;
+    CGFloat editableBorder = imageView.isEditable ? 3.0 * 2 : 0.;
+    windowFrame.size = NSMakeSize(size.width + editableBorder,
+                                  size.height + editableBorder + windowTitleHeight);
 
     aspect = 0.;
 
