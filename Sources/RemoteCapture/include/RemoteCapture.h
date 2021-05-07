@@ -533,7 +533,10 @@ static CGSize bufferSize;
             inhibitEcho = writeFp;
 
             if (sentText) {
-                [textField insertFilteredText:sentText];
+                if ([textField isKindOfClass:[UITextField class]])
+                    [textField insertFilteredText:sentText];
+                else
+                    [textField insertText:sentText];
                 return;
             }
 
