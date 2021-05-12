@@ -26,7 +26,7 @@
 #endif
 
 #ifndef REMOTE_APPNAME
-#define REMOTE_APPNAME "Remote"
+#define REMOTE_APPNAME RemoteCapture
 #endif
 #define REMOTE_MAGIC -141414141
 #define REMOTE_MINDIFF (4*sizeof(rmencoded_t))
@@ -72,23 +72,11 @@ typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchRegionEntered,
     RMTouchRegionMoved,
     RMTouchRegionExited,
-    RMTouchSendText = 100
+    RMTouchInsertText = 100
 };
 
-#define RMMAX_TOUCHES 2
-
-struct _rmcompress {
-    unsigned bytes; unsigned char data[1];
-};
-
-struct _rmevent {
-    NSTimeInterval timestamp;
-    RMTouchPhase phase;
-    union {
-        struct { float x, y; } touches[RMMAX_TOUCHES];
-    };
-};
-
+/// struct sent from client when it connects to rendering server
+/// Can be either original Remote format or "minicap".
 struct _rmdevice {
     char version;
     union {
@@ -116,27 +104,44 @@ struct _rmdevice {
     };
 };
 
+/// struct send before each iage frame sen to render server
 struct _rmframe {
     NSTimeInterval timestamp;
     union {
+        /// image paramters
         struct { float width, height, imageScale; };
+        /// If length < 0, retails of a recorded touch
         struct { float x, y; RMTouchPhase phase; };
     };
+    /// length of image data or if < 0 -touch number
     int length;
 };
 
-@interface RemoteCapture : NSObject {
+/// If image is compressed, it's uncompressed length is sent
+struct _rmcompress {
+    unsigned bytes; unsigned char data[1];
+};
+
+#define RMMAX_TOUCHES 2
+
+/// Struct sent from UI of server to replay touches in the client
+struct _rmevent {
+    NSTimeInterval timestamp;
+    RMTouchPhase phase;
+    union {
+        struct { float x, y; } touches[RMMAX_TOUCHES];
+    };
+    /* int padded; */
+};
+
+@interface REMOTE_APPNAME: NSObject {
 @package
     rmpixel_t *buffer, *buffend;
     CGContextRef cg;
 }
 - (instancetype)initFrame:(const struct _rmframe *)frame;
-- (NSData *)subtractAndEncode:(RemoteCapture *)prevbuff;
+- (NSData *)subtractAndEncode:(REMOTE_APPNAME *)prevbuff;
 - (CGImageRef)cgImage;
-@end
-
-@interface NSObject(UITextField)
-- (void)insertFilteredText:(NSString *)str;
 @end
 
 @protocol RemoteDelegate <NSObject>
@@ -144,8 +149,8 @@ struct _rmframe {
 - (void)remoteConnected:(BOOL)status;
 @end
 
-#if (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && defined(DEBUG) || \
-    !defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && defined(REMOTE_IMPL))
+#if defined(REMOTE_IMPL) || \
+    defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && defined(DEBUG)
 
 #ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
 #import <Cocoa/Cocoa.h>
@@ -153,7 +158,7 @@ struct _rmframe {
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
-@interface RemoteCapture(Client)
+@interface REMOTE_APPNAME(Client)
 + (void)startCapture:(NSString *)addrs;
 + (void)shutdown;
 @end
@@ -163,14 +168,14 @@ static UITouch *currentTouch;
 static NSSet *currentTouches;
 static BOOL lateJoiners;
 
-@interface BCEvent : UIEvent {
+@interface RCFakeEvent: UIEvent {
 @public
     NSTimeInterval _timestamp;
 }
 
 @end
 
-@implementation BCEvent
+@implementation RCFakeEvent
 
 - (instancetype)init {
     if ((self = [super init])) {
@@ -242,9 +247,17 @@ static BOOL lateJoiners;
 @interface UIApplication(ForwardReference)
 - (void)in_sendEvent:(UIEvent *)event;
 @end
+@implementation UITouch(Identifier)
+- (void)_setTouchIdentifier:(unsigned int)ident {
+    Ivar ivar = class_getInstanceVariable([self class], "_touchIdentifier");
+    ptrdiff_t offset = ivar_getOffset(ivar);
+    unsigned *iptr = (unsigned *)((char *)(__bridge void *)self + offset);
+    *iptr = ident;
+}
+@end
 #endif
 
-@implementation RemoteCapture
+@implementation REMOTE_APPNAME
 
 - (instancetype)initFrame:(const struct _rmframe *)frame {
     if ((self = [super init])) {
@@ -266,7 +279,7 @@ static BOOL lateJoiners;
     return self;
 }
 
-- (NSData *)subtractAndEncode:(RemoteCapture *)prevbuff {
+- (NSData *)subtractAndEncode:(REMOTE_APPNAME *)prevbuff {
     unsigned tmpsize = 64*1024;
     rmencoded_t *tmp = (rmencoded_t *)malloc(tmpsize * sizeof *tmp), *end = tmp + tmpsize;
 
@@ -352,9 +365,8 @@ static char *connectionKey;
             port = (in_port_t)parts[1].intValue;
         int remoteSocket = [self connectIPV4:inaddr.UTF8String port:port];
         if (remoteSocket) {
-            NSLog(@"RemoteCapture: Connected to %@:%d.", inaddr, port);
+            NSLog(@"%@: Connected to %@:%d.", self, inaddr, port);
             FILE *writeFp = fdopen(remoteSocket, "w");
-            setbuf(writeFp, NULL);
             [newConnections addObject:[NSValue valueWithPointer:writeFp]];
         }
     }
@@ -368,16 +380,17 @@ static char *connectionKey;
 
     int32_t keylen = (int)strlen(connectionKey);
     for (NSValue *fp in newConnections) {
-         int headerSize = 1 + (device.version == MINICAP_VERSION ?
+        FILE *writeFp = fp.pointerValue;
+        int headerSize = 1 + (device.version == MINICAP_VERSION ?
             sizeof device.minicap : sizeof device.remote);
-        if (fwrite(&device, 1, headerSize, fp.pointerValue) != headerSize)
-            NSLog(@"%s: Could not write device info: %s", REMOTE_APPNAME, strerror(errno));
+        if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
+            NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
         else if (device.version != MINICAP_VERSION &&
-                 fwrite(&keylen, 1, sizeof keylen, fp.pointerValue) != sizeof keylen)
-            NSLog(@"%s: Could not write keylen: %s", REMOTE_APPNAME, strerror(errno));
+                 fwrite(&keylen, 1, sizeof keylen, writeFp) != sizeof keylen)
+            NSLog(@"%@: Could not write keylen: %s", self, strerror(errno));
         else if (device.version != MINICAP_VERSION &&
-                 fwrite(connectionKey, 1, keylen, fp.pointerValue) != keylen)
-            NSLog(@"%s: Could not write key: %s", REMOTE_APPNAME, strerror(errno));
+                 fwrite(connectionKey, 1, keylen, writeFp) != keylen)
+            NSLog(@"%@: Could not write key: %s", self, strerror(errno));
         else
             [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
     }
@@ -405,30 +418,34 @@ static char *connectionKey;
         if (ent)
             memcpy(&remoteAddr.sin_addr, ent->h_addr_list[0], sizeof remoteAddr.sin_addr);
         else {
-            NSLog(@"RemoteCapture: Could not look up host '%s'", ipAddress);
+            NSLog(@"%@: Could not look up host '%s'", self, ipAddress);
             return 0;
         }
     }
 
-    NSLog(@"RemoteCapture: Attempting connection to: %s:%d", ipAddress, port);
+    NSLog(@"%@: Attempting connection to: %s:%d", self, ipAddress, port);
     return [self connectAddr:(struct sockaddr *)&remoteAddr];
 }
 
 + (int)connectAddr:(struct sockaddr *)remoteAddr {
     int remoteSocket, optval = 1;
     if ((remoteSocket = socket(remoteAddr->sa_family, SOCK_STREAM, 0)) < 0)
-        NSLog(@"RemoteCapture: %s: Could not open socket for injection: %s", REMOTE_APPNAME, strerror(errno));
+        NSLog(@"%@: Could not open socket for injection: %s", self, strerror(errno));
     else if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
-        NSLog(@"RemoteCapture: %s: Could not set TCP_NODELAY: %s", REMOTE_APPNAME, strerror(errno));
-    else if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0)
-        return remoteSocket;
+        NSLog(@"%@: Could not set TCP_NODELAY: %s", self, strerror(errno));
+    else
+        for (int retry = 0; retry<3 ; retry++) {
+            if (retry)
+                [NSThread sleepForTimeInterval:1.0];
+            if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0)
+                return remoteSocket;
+        }
 
-    NSLog(@"RemoteCapture: %s: Could not connect: %s", REMOTE_APPNAME, strerror(errno));
+    NSLog(@"%@: Could not connect: %s", self, strerror(errno));
     close(remoteSocket);
     return 0;
 }
 
-static NSArray<UIScreen *> *screens;
 static dispatch_queue_t writeQueue;
 static struct _rmdevice device;
 static NSValue *inhibitEcho;
@@ -444,8 +461,14 @@ static CGSize bufferSize;
     for (size_t i=0, keylen = (int)strlen(connectionKey); i<keylen; i++)
         connectionKey[i] ^= REMOTE_XOR;
 
-    while (!(screens = [UIScreen screens]).count)
-        [NSThread sleepForTimeInterval:.5];
+    __block NSArray<UIScreen *> *screens;
+    do {
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            screens = [UIScreen screens];
+        });
+        if (!screens.count)
+            [NSThread sleepForTimeInterval:.5];
+    } while (!screens.count);
 
     UIWindowLayer = objc_getClass("UIWindowLayer");
 #if 01
@@ -460,8 +483,8 @@ static CGSize bufferSize;
     method_exchangeImplementations(
         class_getInstanceMethod(UIApplication.class, @selector(sendEvent:)),
         class_getInstanceMethod(UIApplication.class, @selector(in_sendEvent:)));
-#ifndef REMOTE_MINICAP
 
+#ifndef REMOTE_MINICAP
     // set up device description struct
     device.version = REMOTE_VERSION;
     *(int *)device.remote.magic = REMOTE_MAGIC;
@@ -492,243 +515,6 @@ static CGSize bufferSize;
 #endif
 }
 
-+ (void)processEvents:(NSValue *)writeFp {
-    FILE *readFp = fdopen(fileno(writeFp.pointerValue), "r");
-
-    struct _rmevent rpevent;
-    while (fread(&rpevent, 1, sizeof rpevent, readFp) == sizeof rpevent) {
-
-        RMLog(@"Remote Event: %f %f %d", rpevent.touches[0].x, rpevent.touches[0].y, rpevent.phase);
-
-        if (rpevent.phase == RMTouchMoved && capturing)
-            continue;
-
-        NSTimeInterval timestamp = rpevent.timestamp;
-        BCEvent *fakeEvent = [BCEvent new];
-        fakeEvent->_timestamp = timestamp;
-
-        NSString *sentText;
-        if (rpevent.phase >= RMTouchSendText) {
-            size_t textSize = rpevent.phase - RMTouchSendText;
-            char *buffer = malloc(textSize + 1);
-            textSize = fread(buffer, 1, textSize, readFp);
-            buffer[textSize] = '\000';
-            sentText = [NSString stringWithUTF8String:buffer];
-        }
-
-        dispatch_sync(dispatch_get_main_queue(), ^{
-            CGPoint location = {rpevent.touches[0].x, rpevent.touches[0].y},
-                location2 = {rpevent.touches[1].x, rpevent.touches[1].y};
-            static UITextAutocorrectionType saveAuto;
-            static BOOL isTextfield, isKeyboard;
-            static UITextField *textField;
-            static UITouch *currentTouch2;
-            static UIView *currentTarget;
-//            static unsigned touchIdentifier = 100000;
-
-            static UITouchesEvent *event;
-            if (!event)
-                event = [[objc_getClass("UITouchesEvent") alloc] _init];
-
-            inhibitEcho = writeFp;
-
-            if (sentText) {
-                if ([textField isKindOfClass:[UITextField class]])
-                    [textField insertFilteredText:sentText];
-                else
-                    [textField insertText:sentText];
-                return;
-            }
-
-            switch (rpevent.phase) {
-
-                case RMTouchBeganDouble:
-
-                    currentTarget = nil;
-                    for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-                        UIView *found = [window hitTest:location2 withEvent:nil];
-                        if (found)
-                            currentTarget = found;
-                    }
-
-                    RMDebug(@"Double Target selected: %@", currentTarget);
-
-                    currentTouch2 = [UITouch new];
-
-                    [currentTouch2 setTimestamp:timestamp];
-                    [currentTouch2 setInitialTouchTimestamp:timestamp];
-                    [currentTouch2 setPhase:(UITouchPhase)rpevent.phase];
-//                    [currentTouch2 setSentTouchesEnded:false];
-                    [currentTouch2 setWindow:currentTarget.window];
-//                    [currentTouch2 _setDisplacement:CGSizeMake(0.0, 0.0)];
-//                    [currentTouch2 _setWindowServerHitTestWindow:currentTarget.window];
-//                    [currentTouch2 _setTouchIdentifier:touchIdentifier];
-                    [currentTouch2 _setPathIndex:1];
-                    [currentTouch2 _setPathIdentity:2];
-//                    [currentTouch2 setMajorRadius:20.0];
-//                    [currentTouch2 setMajorRadiusTolerance:5.0];
-                    [currentTouch2 _setType:0];
-//                    [currentTouch2 _setNeedsForceUpdate:false];
-//                    [currentTouch2 _setHasForceUpdate:false];
-//                    [currentTouch2 _setForceCorrelationToken:0];
-                    [currentTouch2 _setSenderID:778835616971358211];
-                    [currentTouch2 _setZGradient:0.0];
-//                    [currentTouch2 _setMaximumPossiblePressure:0.0];
-                    [currentTouch2 _setEdgeType:0];
-                    [currentTouch2 _setEdgeAim:0];
-
-                    //[self _setIsFirstTouchForView:1];
-                    [currentTouch2 setView:currentTarget];
-//                    [currentTouch2 _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
-//                    [currentTouch2 _setPressure:0.0 resetPrevious:true];
-                    //[UITouch _updateWithChildEvent:0x600001ff81c0];
-//                    [currentTouch2 setIsTap:true];
-                    [currentTouch2 setTapCount:1];
-//                    [currentTouch2 _setIsFirstTouchForView:true];
-
-                    [currentTouch2 _setLocationInWindow:location resetPrevious:YES];
-
-                case RMTouchBegan:
-                    currentTarget = nil;
-                    for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-                        UIView *found = [window hitTest:location withEvent:nil];
-                        if (found)
-                            currentTarget = found;
-                    }
-
-                    isTextfield = [currentTarget
-                                   respondsToSelector:@selector(setAutocorrectionType:)];
-                    isKeyboard = [currentTarget
-                                  isKindOfClass:objc_getClass("UIKeyboardLayoutStar")];
-
-                    RMDebug(@"Target selected: %@ %d %d\n%@", currentTarget,
-                          isTextfield, isKeyboard, [currentTarget recursiveDescription]);
-
-                    if (currentTarget.superview.class ==
-                        objc_getClass("UIKeyboardEmojiCollectionViewCell")) {
-                        NSString *emoji = [(UILabel *)currentTarget.subviews[0] text];
-                        textField.text = [textField.text stringByAppendingString:emoji];
-                    }
-
-                    if (isTextfield) {
-                        textField = (UITextField *)currentTarget;
-                        saveAuto = textField.autocorrectionType;
-                        textField.autocorrectionType = UITextAutocorrectionTypeNo;
-                    }
-
-                    if (!currentTouch)
-                        currentTouch = realTouch ?: [UITouch new];
-
-                    [currentTouch setTimestamp:timestamp];
-                    [currentTouch setInitialTouchTimestamp:timestamp];
-                    [currentTouch setPhase:(UITouchPhase)rpevent.phase];
-//                    [currentTouch setSentTouchesEnded:false];
-                    [currentTouch setWindow:currentTarget.window];
-//                    [currentTouch _setDisplacement:CGSizeMake(0.0, 0.0)];
-//                    [currentTouch _setWindowServerHitTestWindow:currentTarget.window];
-//                    [currentTouch _setTouchIdentifier:touchIdentifier];
-                    [currentTouch _setPathIndex:1];
-                    [currentTouch _setPathIdentity:2];
-//                    [currentTouch setMajorRadius:20.0];
-//                    [currentTouch setMajorRadiusTolerance:5.0];
-                    [currentTouch _setType:0];
-//                    [currentTouch _setNeedsForceUpdate:false];
-//                    [currentTouch _setHasForceUpdate:false];
-//                    [currentTouch _setForceCorrelationToken:0];
-                    [currentTouch _setSenderID:778835616971358211];
-                    [currentTouch _setZGradient:0.0];
-//                    [currentTouch _setMaximumPossiblePressure:0.0];
-                    [currentTouch _setEdgeType:0];
-                    [currentTouch _setEdgeAim:0];
-
-                    //[self _setIsFirstTouchForView:1];
-                    [currentTouch setView:currentTarget];
-//                    [currentTouch _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
-//                    [currentTouch _setPressure:0.0 resetPrevious:true];
-                    //[UITouch _updateWithChildEvent:0x600001ff81c0];
-//                    [currentTouch setIsTap:true];
-                    [currentTouch setTapCount:1];
-//                    [currentTouch _setIsFirstTouchForView:true];
-
-                    [currentTouch _setLocationInWindow:location resetPrevious:YES];
-
-                    currentTouches = [NSSet setWithObjects:currentTouch, currentTouch2, nil];
-
-                    [event _clearTouches];
-                    [event _addTouch:currentTouch forDelayedDelivery:NO];
-                    if (currentTouch2)
-                        [event _addTouch:currentTouch2 forDelayedDelivery:NO];
-
-                    [[UIApplication sharedApplication] sendEvent:(UIEvent *)event];
-//                    if (!isKeyboard)
-                        [currentTarget touchesBegan:currentTouches withEvent:fakeEvent];
-                    break;
-
-                case RMTouchMoved:
-                case RMTouchStationary:
-                    [currentTouch setPhase:(UITouchPhase)rpevent.phase];
-                    [currentTouch _setLocationInWindow:location resetPrevious:YES];
-                    [currentTouch setTimestamp:timestamp];
-
-                    [currentTouch2 setPhase:(UITouchPhase)rpevent.phase];
-                    [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
-                    [currentTouch2 setTimestamp:timestamp];
-
-                    [[UIApplication sharedApplication] sendEvent:(UIEvent *)event];
-//                    if (!isKeyboard)
-                        [currentTarget touchesMoved:currentTouches withEvent:fakeEvent];
-                    break;
-
-                case RMTouchEnded:
-                case RMTouchCancelled:
-                    [currentTouch setPhase:(UITouchPhase)rpevent.phase];
-                    [currentTouch _setLocationInWindow:location resetPrevious:YES];
-                    [currentTouch setTimestamp:timestamp];
-
-                    [currentTouch2 setPhase:(UITouchPhase)rpevent.phase];
-                    [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
-                    [currentTouch2 setTimestamp:timestamp];
-
-                    [[UIApplication sharedApplication] sendEvent:(UIEvent *)event];
-//                    if (!isKeyboard)
-                        [currentTarget touchesEnded:currentTouches withEvent:fakeEvent];
-
-                    if (isTextfield) {
-                        UITextField *textField = (UITextField *)currentTarget;
-                        textField.autocorrectionType = saveAuto;
-                    }
-
-                    currentTouches = nil;
-                    currentTarget = nil;
-                    currentTouch2 = nil;
-                    currentTouch = nil;
-                    event = nil;
-                    break;
-
-                default:
-                    NSLog(@"RemoteCapture: Invalid Event: %d", rpevent.phase);
-            }
-
-            inhibitEcho = nil;
-        });
-    }
-
-    NSLog(@"%s: processEvents: exits", REMOTE_APPNAME);
-    fclose(readFp);
-
-    [connections removeObject:writeFp];
-    fclose(writeFp.pointerValue);
-    if (!connections.count)
-        [self shutdown];
-}
-
-+ (void)shutdown {
-    [remoteDelegate remoteConnected:FALSE];
-    for (NSValue *writeFp in connections)
-        fclose(writeFp.pointerValue);
-    connections = nil;
-}
-
 static int skipEcho;
 static BOOL capturing;
 static NSTimeInterval mostRecentScreenUpdate;
@@ -736,7 +522,7 @@ static NSTimeInterval mostRecentScreenUpdate;
 + (CGRect)screenBounds {
     CGRect bounds = CGRectZero;
     while (TRUE) {
-        for (UIWindow *window in UIApplication.sharedApplication.windows)  {
+        for (UIWindow *window in [UIApplication sharedApplication].windows)  {
             if (window.bounds.size.height > bounds.size.height)
                 bounds = window.bounds;
         }
@@ -766,14 +552,14 @@ static NSTimeInterval mostRecentScreenUpdate;
 
     if (bufferSize.width != frame.width || bufferSize.height != frame.height) {
         buffers = nil;
-        buffers = @[[[RemoteCapture alloc] initFrame:&frame],
-                    [[RemoteCapture alloc] initFrame:&frame]];
+        buffers = @[[[self alloc] initFrame:&frame],
+                    [[self alloc] initFrame:&frame]];
         bufferSize = screenSize;
         frameno = 0;
     }
 
-    RemoteCapture *buffer = buffers[frameno++&1];
-    RemoteCapture *prevbuff = buffers[frameno&1];
+    REMOTE_APPNAME *buffer = buffers[frameno++&1];
+    REMOTE_APPNAME *prevbuff = buffers[frameno&1];
     UIImage *screenshot;
     RMDebug(@"%@, %@ -- %@", buffers, buffer, prevbuff);
 
@@ -839,7 +625,11 @@ static NSTimeInterval mostRecentScreenUpdate;
 
         NSData *encoded;
         if (device.version == MINICAP_VERSION)
+#ifdef REMOTE_PNGFORMAT
+            encoded = UIImagePNGRepresentation(screenshot);
+#else
             encoded = UIImageJPEGRepresentation(screenshot, 0.8);
+#endif
         else {
             if (screenshot)
                 CGContextDrawImage(buffer->cg, CGRectMake(0, 0,
@@ -881,43 +671,298 @@ static NSTimeInterval mostRecentScreenUpdate;
 #endif
         }
 
-        for (NSValue *writeFp in connections) {
-            FILE *fp = (FILE *)writeFp.pointerValue;
+        for (NSValue *fp in connections) {
+            FILE *writeFp = (FILE *)fp.pointerValue;
             uint32_t frameSize = (uint32_t)encoded.length;
             int frameHeaderSize = device.version == MINICAP_VERSION ?
                                     sizeof frameSize : sizeof frame;
             if (fwrite(device.version == MINICAP_VERSION ? (void *)&frameSize :
-                        (void *)&frame, 1, frameHeaderSize, fp) != frameHeaderSize)
-                NSLog(@"RemoteCapture: Could not write bounds: %s", strerror(errno));
-            else if (fwrite(encoded.bytes, 1, encoded.length, fp) != encoded.length)
-                NSLog(@"RemoteCapture: Could not write encoded: %s", strerror(errno));
+                      (void *)&frame, 1, frameHeaderSize, writeFp) != frameHeaderSize)
+                NSLog(@"%@: Could not write frame: %s", self, strerror(errno));
+            else if (fwrite(encoded.bytes, 1, encoded.length, writeFp) != encoded.length)
+                NSLog(@"%@: Could not write encoded: %s", self, strerror(errno));
+            else
+                fflush(writeFp);
         }
     });
 }
 
++ (void)processEvents:(NSValue *)writeFp {
+    FILE *readFp = fdopen(fileno(writeFp.pointerValue), "r");
+
+    struct _rmevent rpevent;
+    while (fread(&rpevent, 1, sizeof rpevent, readFp) == sizeof rpevent) {
+
+        RMLog(@"Remote Event: %f %f %d", rpevent.touches[0].x, rpevent.touches[0].y, rpevent.phase);
+
+        if (rpevent.phase == RMTouchMoved && capturing)
+            continue;
+
+        NSTimeInterval timestamp = rpevent.timestamp;
+
+        NSString *sentText;
+        if (rpevent.phase >= RMTouchInsertText) {
+            size_t textSize = rpevent.phase - RMTouchInsertText;
+            char *buffer = malloc(textSize + 1);
+            textSize = fread(buffer, 1, textSize, readFp);
+            buffer[textSize] = '\000';
+            sentText = [NSString stringWithUTF8String:buffer];
+            free(buffer);
+        }
+
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            CGPoint location = {rpevent.touches[0].x, rpevent.touches[0].y},
+                location2 = {rpevent.touches[1].x, rpevent.touches[1].y};
+            static UITextAutocorrectionType saveAuto;
+            static BOOL isTextfield, isKeyboard, isButton;
+            static UITextField *textField;
+            static UITouch *currentTouch2;
+            static UIView *currentTarget;
+            static unsigned touchIdentifier = 120;
+            touchIdentifier++;
+            
+            static UITouchesEvent *event;
+            if (!event)
+                event = [[objc_getClass("UITouchesEvent") alloc] _init];
+            RCFakeEvent *fakeEvent = [RCFakeEvent new];
+            fakeEvent->_timestamp = timestamp;
+
+            if (sentText) {
+                [textField insertText:sentText];
+                return;
+            }
+
+            inhibitEcho = writeFp;
+
+            switch (rpevent.phase) {
+
+                case RMTouchBeganDouble:
+
+                    currentTarget = nil;
+                    for (UIWindow *window in [UIApplication sharedApplication].windows) {
+                        UIView *found = [window hitTest:location2 withEvent:nil];
+                        if (found)
+                            currentTarget = found;
+                    }
+
+                    RMDebug(@"Double Target selected: %@", currentTarget);
+
+                    currentTouch2 = [UITouch new];
+
+                    [currentTouch2 setTimestamp:timestamp];
+                    [currentTouch2 setInitialTouchTimestamp:timestamp];
+                    [currentTouch2 setPhase:(UITouchPhase)rpevent.phase];
+//                    [currentTouch2 setSentTouchesEnded:false];
+                    [currentTouch2 setWindow:currentTarget.window];
+//                    [currentTouch2 _setDisplacement:CGSizeMake(0.0, 0.0)];
+//                    [currentTouch2 _setWindowServerHitTestWindow:currentTarget.window];
+                    [currentTouch2 _setTouchIdentifier:touchIdentifier];
+                    [currentTouch2 _setPathIndex:1];
+                    [currentTouch2 _setPathIdentity:2];
+//                    [currentTouch2 setMajorRadius:20.0];
+//                    [currentTouch2 setMajorRadiusTolerance:5.0];
+                    [currentTouch2 _setType:0];
+//                    [currentTouch2 _setNeedsForceUpdate:false];
+//                    [currentTouch2 _setHasForceUpdate:false];
+//                    [currentTouch2 _setForceCorrelationToken:0];
+                    [currentTouch2 _setSenderID:778835616971358211];
+                    [currentTouch2 _setZGradient:0.0];
+//                    [currentTouch2 _setMaximumPossiblePressure:0.0];
+                    [currentTouch2 _setEdgeType:0];
+                    [currentTouch2 _setEdgeAim:0];
+
+                    //[self _setIsFirstTouchForView:1];
+                    [currentTouch2 setView:currentTarget];
+//                    [currentTouch2 _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
+//                    [currentTouch2 _setPressure:0.0 resetPrevious:true];
+                    //[UITouch _updateWithChildEvent:0x600001ff81c0];
+//                    [currentTouch2 setIsTap:true];
+                    [currentTouch2 setTapCount:1];
+//                    [currentTouch2 _setIsFirstTouchForView:true];
+
+                    [currentTouch2 _setLocationInWindow:location resetPrevious:YES];
+
+                case RMTouchBegan:
+                    currentTarget = nil;
+                    for (UIWindow *window in [UIApplication sharedApplication].windows) {
+                        UIView *found = [window hitTest:location withEvent:fakeEvent];
+                        if (found)
+                            currentTarget = found;
+                    }
+
+                    isTextfield = [currentTarget
+                                   respondsToSelector:@selector(setAutocorrectionType:)];
+                    isKeyboard = [currentTarget
+                                  isKindOfClass:objc_getClass("UIKeyboardLayoutStar")];
+
+                    static NSArray *needsTouch;
+                    if (!needsTouch) needsTouch = @[
+                        objc_getClass("UIButton"),
+                        objc_getClass("UITabBarButton"),
+                        objc_getClass("_UIButtonBarButton"),
+                        objc_getClass("UISegmentedControl"),
+                        objc_getClass("UITableViewCellEditControl"),
+                        objc_getClass("UISwipeActionStandardButton")];
+
+                    isButton = [currentTarget class] == [UIView class];
+                    for (Class buttonClass in needsTouch)
+                        if ([currentTarget isKindOfClass:buttonClass])
+                            isButton = true;
+
+                    if (!currentTouch)
+                        currentTouch = realTouch ?: [UITouch new];
+                    [currentTouch _setTouchIdentifier:touchIdentifier];
+
+                    RMLog(@"Target selected: %@ %d %d %d %d %lx\n%@",
+                            currentTarget, isTextfield, isKeyboard, isButton,
+                            currentTouch._touchIdentifier, currentTouch.hash,
+                            [currentTarget recursiveDescription]);
+
+                    if (currentTarget.superview.class ==
+                        objc_getClass("UIKeyboardEmojiCollectionViewCell")) {
+                        NSString *emoji = [(UILabel *)currentTarget.subviews[0] text];
+                        [textField insertText:emoji];
+                    }
+
+                    if (isTextfield) {
+                        textField = (UITextField *)currentTarget;
+                        saveAuto = textField.autocorrectionType;
+                        textField.autocorrectionType = UITextAutocorrectionTypeNo;
+                    }
+
+                    [currentTouch setTimestamp:timestamp];
+                    [currentTouch setInitialTouchTimestamp:timestamp];
+                    [currentTouch setPhase:(UITouchPhase)rpevent.phase];
+//                    [currentTouch setSentTouchesEnded:false];
+                    [currentTouch setWindow:currentTarget.window];
+//                    [currentTouch _setDisplacement:CGSizeMake(0.0, 0.0)];
+//                    [currentTouch _setWindowServerHitTestWindow:currentTarget.window];
+//                    [currentTouch _setTouchIdentifier:touchIdentifier];
+                    [currentTouch _setPathIndex:1];
+                    [currentTouch _setPathIdentity:2];
+//                    [currentTouch setMajorRadius:20.0];
+//                    [currentTouch setMajorRadiusTolerance:5.0];
+                    [currentTouch _setType:0];
+//                    [currentTouch _setNeedsForceUpdate:false];
+//                    [currentTouch _setHasForceUpdate:false];
+//                    [currentTouch _setForceCorrelationToken:0];
+                    [currentTouch _setSenderID:778835616971358211];
+                    [currentTouch _setZGradient:0.0];
+//                    [currentTouch _setMaximumPossiblePressure:0.0];
+                    [currentTouch _setEdgeType:0];
+                    [currentTouch _setEdgeAim:0];
+
+                    //[self _setIsFirstTouchForView:1];
+                    [currentTouch setView:currentTarget];
+//                    [currentTouch _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
+//                    [currentTouch _setPressure:0.0 resetPrevious:true];
+                    //[UITouch _updateWithChildEvent:0x600001ff81c0];
+//                    [currentTouch setIsTap:true];
+                    [currentTouch setTapCount:1];
+//                    [currentTouch _setIsFirstTouchForView:true];
+
+                    [currentTouch _setLocationInWindow:location resetPrevious:YES];
+
+                    currentTouches = [NSSet setWithObjects:currentTouch, currentTouch2, nil];
+
+                    [event _clearTouches];
+                    [event _addTouch:currentTouch forDelayedDelivery:NO];
+                    if (currentTouch2)
+                        [event _addTouch:currentTouch2 forDelayedDelivery:NO];
+
+                    [[UIApplication sharedApplication] sendEvent:event];
+                    if (isButton)
+                        [currentTarget touchesBegan:currentTouches withEvent:fakeEvent];
+                    break;
+
+                case RMTouchMoved:
+                case RMTouchStationary:
+                    [currentTouch setPhase:(UITouchPhase)rpevent.phase];
+                    [currentTouch _setLocationInWindow:location resetPrevious:YES];
+                    [currentTouch setTimestamp:timestamp];
+
+                    [currentTouch2 setPhase:(UITouchPhase)rpevent.phase];
+                    [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
+                    [currentTouch2 setTimestamp:timestamp];
+
+                    [[UIApplication sharedApplication] sendEvent:event];
+                    if (isButton)
+                        [currentTarget touchesMoved:currentTouches withEvent:fakeEvent];
+                    break;
+
+                case RMTouchEnded:
+                case RMTouchCancelled:
+                    [currentTouch setPhase:(UITouchPhase)rpevent.phase];
+                    [currentTouch _setLocationInWindow:location resetPrevious:YES];
+                    [currentTouch setTimestamp:timestamp];
+
+                    [currentTouch2 setPhase:(UITouchPhase)rpevent.phase];
+                    [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
+                    [currentTouch2 setTimestamp:timestamp];
+
+                    [[UIApplication sharedApplication] sendEvent:event];
+                    if (isButton)
+                        [currentTarget touchesEnded:currentTouches withEvent:fakeEvent];
+
+                    if (isTextfield) {
+                        UITextField *textField = (UITextField *)currentTarget;
+                        textField.autocorrectionType = saveAuto;
+                    }
+
+                    currentTouches = nil;
+                    currentTarget = nil;
+                    currentTouch2 = nil;
+                    currentTouch = nil;
+                    event = nil;
+                    break;
+
+                default:
+                    NSLog(@"%@: Invalid Event: %d", self, rpevent.phase);
+            }
+
+            inhibitEcho = nil;
+        });
+    }
+
+    NSLog(@"%@: processEvents: exits", self);
+    fclose(readFp);
+
+    [connections removeObject:writeFp];
+    fclose(writeFp.pointerValue);
+    if (!connections.count)
+        [self shutdown];
+}
+
++ (void)shutdown {
+    [remoteDelegate remoteConnected:FALSE];
+    for (NSValue *writeFp in connections)
+        fclose(writeFp.pointerValue);
+    connections = nil;
+}
+
 + (void)captureSynchronized:(NSNumber *)timestamp {
     dispatch_async(writeQueue, ^{
-        [RemoteCapture performSelectorOnMainThread:@selector(capture:) withObject:timestamp waitUntilDone:NO];
+        [self performSelectorOnMainThread:@selector(capture:) withObject:timestamp waitUntilDone:NO];
     });
 }
 
 + (void)queueCapture {
     RMDebug(@"queueCapture");
-    [RemoteCapture performSelectorOnMainThread:@selector(captureSynchronized:)
+    [self performSelectorOnMainThread:@selector(captureSynchronized:)
         withObject:[NSNumber numberWithDouble:mostRecentScreenUpdate =
                     [NSDate timeIntervalSinceReferenceDate]] waitUntilDone:NO];
 }
 
 @end
 
-@implementation CALayer(RemoteCapture)
+@implementation CALayer(REMOTE_APPNAME)
 
 - (void)queueCapture {
     if (connections.count && !capturing && self.class == UIWindowLayer && --skipEcho<0)
-        [RemoteCapture queueCapture];
+        [REMOTE_APPNAME queueCapture];
     else {
-        [RemoteCapture cancelPreviousPerformRequestsWithTarget:RemoteCapture.class];
-        [RemoteCapture performSelector:@selector(queueCapture) withObject:nil afterDelay:0.8];
+        [REMOTE_APPNAME cancelPreviousPerformRequestsWithTarget:REMOTE_APPNAME.class];
+        [REMOTE_APPNAME performSelector:@selector(queueCapture) withObject:nil afterDelay:0.8];
     }
 }
 
@@ -938,12 +983,13 @@ static NSTimeInterval mostRecentScreenUpdate;
 
 @end
 
-@implementation UIApplication(RemoteCapture)
+@implementation UIApplication(REMOTE_APPNAME)
 
 - (void)in_sendEvent:(UIEvent *)anEvent {
     [self in_sendEvent:anEvent];
     NSSet *touches = anEvent.allTouches;
     NSValue *incomingFp = inhibitEcho;
+    realTouch = touches.anyObject;
 
 #if 0
     RMLog(@"%@", anEvent);
@@ -951,34 +997,36 @@ static NSTimeInterval mostRecentScreenUpdate;
         RMLog(@"Gestures: %@", t.gestureRecognizers);
 #endif
 
-    if (device.version == MINICAP_VERSION && REMOTE_PORT != 31449)
-        return;
+//    if (device.version == MINICAP_VERSION && REMOTE_PORT == 1313)
+//        return;
 
     struct _rmframe header;
     header.timestamp = [NSDate timeIntervalSinceReferenceDate];
-    header.length = (int)-touches.count;
+    header.length = -(int)touches.count;
+
+    NSMutableData *out = [NSMutableData new];
+    if (device.version == MINICAP_VERSION)
+        [out appendBytes:&header.length length:sizeof header.length];
 
     for (UITouch *touch in touches) {
         CGPoint loc = [touch locationInView:touch.window];
         header.phase = (RMTouchPhase)touch.phase;
         header.x = loc.x;
         header.y = loc.y;
-        NSData *out = [NSData dataWithBytes:&header length:sizeof header];
-        dispatch_async(writeQueue, ^{
-            int32_t minlen = header.length;
-            for (NSValue *fp in connections) {
-                if (fp == incomingFp)
-                    continue;
-                if (device.version == MINICAP_VERSION &&
-                    fwrite(&minlen, 1, sizeof minlen, fp.pointerValue) != sizeof minlen)
-                    NSLog(@"RemoteCapture: Could not write event: %s", strerror(errno));
-                else if (fwrite(out.bytes, 1, out.length, fp.pointerValue) != out.length)
-                    NSLog(@"RemoteCapture: Could not write event: %s", strerror(errno));
-            }
-        });
+        [out appendBytes:&header length:sizeof header];
         header.length++;
-        realTouch = touch;
     }
+
+    dispatch_async(writeQueue, ^{
+        for (NSValue *fp in connections) {
+            if (fp == incomingFp)
+                continue;
+            if (fwrite(out.bytes, 1, out.length, fp.pointerValue) != out.length)
+                NSLog(@"%@: Could not write event: %s", REMOTE_APPNAME.class, strerror(errno));
+            else
+                fflush(fp.pointerValue);
+        }
+    });
 }
 
 #endif

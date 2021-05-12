@@ -17,6 +17,7 @@
 #import <zlib.h>
 
 #define COMPRESS_SNAPSHOT
+//#define RemoteCapture REMOTE_APPNAME
 
 @implementation  RemoteCapture(Recover)
 
@@ -153,7 +154,7 @@
     while (fread(framePtr, 1, frameSize, renderStream) == frameSize) {
         // event from device
         if (newFrame.length < 0) {
-            // If minicap image length < 0 read remote event from the device
+            // If minicap image length < 0 read remote touch(es) from the device
             if (device.version == MINICAP_VERSION &&
                 fread(&newFrame, 1, sizeof newFrame, renderStream) != sizeof newFrame)
                 break;
@@ -404,7 +405,7 @@
     const char *chars = text.UTF8String;
     size_t len = strlen(chars);
     struct _rmevent event = {
-        [NSDate timeIntervalSinceReferenceDate], RMTouchSendText+len, 0.0, 0.0};
+        [NSDate timeIntervalSinceReferenceDate], RMTouchInsertText+len, 0.0, 0.0};
     if (write(clientSocket, &event, sizeof event) == sizeof event &&
         write(clientSocket, chars, len) == len)
         NSLog(@"Remote: text write error");

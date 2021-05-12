@@ -18,6 +18,12 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 
+#ifndef REMOTE_TITLE
+#define REMOTE_TITLE Remote
+#endif
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
+
 @implementation NSTextCheckingResult(groups)
 
 - (NSString *)groupAtIndex:(NSUInteger)index inString:(NSString *)string {
@@ -122,12 +128,8 @@ static int serverSocket;
                 lastRMWindowController.device = [[RMDeviceController alloc] initSocket:clientSocket owner:lastRMWindowController];
                 lastRMWindowController.window.title =
                     [NSString stringWithFormat:@"%s: %s (%@)",
-                     REMOTE_APPNAME,
-#ifndef REMOTE_MINICAP
+                     EXPAND_AND_QUOTE(REMOTE_TITLE),
                      lastRMWindowController.device->device.remote.hostname,
-#else
-                     ipAddr.UTF8String,
-#endif
                      ipAddr];
             });
         }
