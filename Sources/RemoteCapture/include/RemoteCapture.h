@@ -381,7 +381,7 @@ static char *connectionKey;
     int32_t keylen = (int)strlen(connectionKey);
     for (NSValue *fp in newConnections) {
         FILE *writeFp = fp.pointerValue;
-        int headerSize = 1 + (device.version == MINICAP_VERSION ?
+        int headerSize = 1 + (device.version == MINICAP_VERSION && 0 ?
             sizeof device.minicap : sizeof device.remote);
         if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
             NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
@@ -487,6 +487,9 @@ static CGSize bufferSize;
 #ifndef REMOTE_MINICAP
     // set up device description struct
     device.version = REMOTE_VERSION;
+#else
+    device.version = MINICAP_VERSION;
+#endif
     *(int *)device.remote.magic = REMOTE_MAGIC;
 
     size_t size = sizeof device.remote.machine-1;
@@ -502,7 +505,7 @@ static CGSize bufferSize;
     *(float *)device.remote.scale = [screens[0] scale];
     *(int *)device.remote.isIPad =
         [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
-#else
+#if 0
     device.version = MINICAP_VERSION;
     device.minicap.headerSize = sizeof(device.version) + sizeof(device.minicap);
     *(uint32_t *)device.minicap.pid = getpid();
@@ -605,10 +608,13 @@ static NSTimeInterval mostRecentScreenUpdate;
 //        extern CGImageRef UIGetScreenImage(void);
 //        CGImageRef screenshot = UIGetScreenImage();
 //        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
+        CGFloat scale = 2.0;
+        CGSize fullSize = CGSizeMake(screenSize.width*scale, screenSize.height*scale);
+        CGRect fullBounds = CGRectMake(0, 0, screenSize.width*scale, screenSize.height*scale);
         UIGraphicsBeginImageContext(screenSize);
         for (UIWindow *window in [UIApplication sharedApplication].windows)
             if (!window.isHidden)
-                [window drawViewHierarchyInRect:screenBounds afterScreenUpdates:NO];
+                [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
         screenshot = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
         skipEcho = 0;
@@ -870,7 +876,7 @@ static NSTimeInterval mostRecentScreenUpdate;
                     if (currentTouch2)
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
 
-                    [[UIApplication sharedApplication] sendEvent:event];
+                    [[UIApplication sharedApplication] in_sendEvent:event];
                     if (isButton)
                         [currentTarget touchesBegan:currentTouches withEvent:fakeEvent];
                     break;
@@ -885,7 +891,7 @@ static NSTimeInterval mostRecentScreenUpdate;
                     [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
                     [currentTouch2 setTimestamp:timestamp];
 
-                    [[UIApplication sharedApplication] sendEvent:event];
+                    [[UIApplication sharedApplication] in_sendEvent:event];
                     if (isButton)
                         [currentTarget touchesMoved:currentTouches withEvent:fakeEvent];
                     break;
@@ -900,7 +906,7 @@ static NSTimeInterval mostRecentScreenUpdate;
                     [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
                     [currentTouch2 setTimestamp:timestamp];
 
-                    [[UIApplication sharedApplication] sendEvent:event];
+                    [[UIApplication sharedApplication] in_sendEvent:event];
                     if (isButton)
                         [currentTarget touchesEnded:currentTouches withEvent:fakeEvent];
 
@@ -996,9 +1002,6 @@ static NSTimeInterval mostRecentScreenUpdate;
     for (UITouch *t in touches)
         RMLog(@"Gestures: %@", t.gestureRecognizers);
 #endif
-
-//    if (device.version == MINICAP_VERSION && REMOTE_PORT == 1313)
-//        return;
 
     struct _rmframe header;
     header.timestamp = [NSDate timeIntervalSinceReferenceDate];

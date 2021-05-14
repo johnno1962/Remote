@@ -406,8 +406,8 @@
     size_t len = strlen(chars);
     struct _rmevent event = {
         [NSDate timeIntervalSinceReferenceDate], RMTouchInsertText+len, 0.0, 0.0};
-    if (write(clientSocket, &event, sizeof event) == sizeof event &&
-        write(clientSocket, chars, len) == len)
+    if (write(clientSocket, &event, sizeof event) != sizeof event ||
+        write(clientSocket, chars, len) != len)
         NSLog(@"Remote: text write error");
     [owner logAdd:[NSString stringWithFormat:@"Text: %@", text]];
 }
