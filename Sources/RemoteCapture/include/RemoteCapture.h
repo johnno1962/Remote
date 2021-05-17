@@ -225,7 +225,7 @@ static BOOL lateJoiners;
 }
 
 - (UIEventType)type {
-    return 0;
+    return (UIEventType)0;
 }
 
 @end
@@ -380,7 +380,7 @@ static char *connectionKey;
 
     int32_t keylen = (int)strlen(connectionKey);
     for (NSValue *fp in newConnections) {
-        FILE *writeFp = fp.pointerValue;
+        FILE *writeFp = (FILE *)fp.pointerValue;
         int headerSize = 1 + (device.version == MINICAP_VERSION && 0 ?
             sizeof device.minicap : sizeof device.remote);
         if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
@@ -608,10 +608,10 @@ static NSTimeInterval mostRecentScreenUpdate;
 //        extern CGImageRef UIGetScreenImage(void);
 //        CGImageRef screenshot = UIGetScreenImage();
 //        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
-        CGFloat scale = 2.0;
+        CGFloat scale = 1.0;
         CGSize fullSize = CGSizeMake(screenSize.width*scale, screenSize.height*scale);
-        CGRect fullBounds = CGRectMake(0, 0, screenSize.width*scale, screenSize.height*scale);
-        UIGraphicsBeginImageContext(screenSize);
+        CGRect fullBounds = CGRectMake(0, 0, fullSize.width, fullSize.height);
+        UIGraphicsBeginImageContext(fullSize);
         for (UIWindow *window in [UIApplication sharedApplication].windows)
             if (!window.isHidden)
                 [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
@@ -694,7 +694,7 @@ static NSTimeInterval mostRecentScreenUpdate;
 }
 
 + (void)processEvents:(NSValue *)writeFp {
-    FILE *readFp = fdopen(fileno(writeFp.pointerValue), "r");
+    FILE *readFp = fdopen(fileno((FILE *)writeFp.pointerValue), "r");
 
     struct _rmevent rpevent;
     while (fread(&rpevent, 1, sizeof rpevent, readFp) == sizeof rpevent) {
@@ -709,7 +709,7 @@ static NSTimeInterval mostRecentScreenUpdate;
         NSString *sentText;
         if (rpevent.phase >= RMTouchInsertText) {
             size_t textSize = rpevent.phase - RMTouchInsertText;
-            char *buffer = malloc(textSize + 1);
+            char *buffer = (char *)malloc(textSize + 1);
             textSize = fread(buffer, 1, textSize, readFp);
             buffer[textSize] = '\000';
             sentText = [NSString stringWithUTF8String:buffer];
@@ -934,7 +934,7 @@ static NSTimeInterval mostRecentScreenUpdate;
     fclose(readFp);
 
     [connections removeObject:writeFp];
-    fclose(writeFp.pointerValue);
+    fclose((FILE *)writeFp.pointerValue);
     if (!connections.count)
         [self shutdown];
 }
@@ -942,7 +942,7 @@ static NSTimeInterval mostRecentScreenUpdate;
 + (void)shutdown {
     [remoteDelegate remoteConnected:FALSE];
     for (NSValue *writeFp in connections)
-        fclose(writeFp.pointerValue);
+        fclose((FILE *)writeFp.pointerValue);
     connections = nil;
 }
 
@@ -1024,10 +1024,11 @@ static NSTimeInterval mostRecentScreenUpdate;
         for (NSValue *fp in connections) {
             if (fp == incomingFp)
                 continue;
-            if (fwrite(out.bytes, 1, out.length, fp.pointerValue) != out.length)
+            FILE *writeFp = (FILE *)fp.pointerValue;
+            if (fwrite(out.bytes, 1, out.length, writeFp) != out.length)
                 NSLog(@"%@: Could not write event: %s", REMOTE_APPNAME.class, strerror(errno));
             else
-                fflush(fp.pointerValue);
+                fflush(writeFp);
         }
     });
 }
