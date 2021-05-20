@@ -75,7 +75,7 @@
                     withObject:[NSValue valueWithPointer:renderStream]];
             return self;
         }
-        else if (device.version != REMOTE_VERSION && device.version != REMOTE_NOKEY)
+        else if (device.version && device.version > REMOTE_VERSION)
             [RMWindowController error:@"Invalid remote version: %d != %d",
                   device.version, REMOTE_VERSION];
         else if (fread(&device.remote, 1, sizeof device.remote, renderStream) != sizeof device.remote)
@@ -86,7 +86,7 @@
             int32_t keylen = 0;
             char *nokey = "", *key = nokey;
 
-            if (device.version != REMOTE_NOKEY) {
+            if (device.version == REMOTE_VERSION) {
                 if (fread(&keylen, 1, sizeof keylen, renderStream) != sizeof keylen)
                     [RMWindowController error:@"Could not read keylen: %s",
                      strerror(errno)];
@@ -99,8 +99,8 @@
                     for (int i=0 ; i<keylen; i++)
                         key[i] ^= REMOTE_XOR;
                 }
-                NSString *source = [NSString stringWithUTF8String:key];
-                NSLog(@"%@", source);
+//                NSString *source = [NSString stringWithUTF8String:key];
+//                NSLog(@"%@", source);
                 free(key);
             }
 
@@ -135,9 +135,6 @@
                                   *(uint32_t *)device.minicap.virtualWidth];
         [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:)
                                             withObject:deviceString waitUntilDone:NO];
-        NSLog(@"%@", deviceString);
-        framePtr = &newFrame.length;
-        frameSize = sizeof newFrame.length;
     }
     else {
         NSString *deviceString = [NSString stringWithFormat:@"<div>Hardware %s</div>", device.remote.machine];
@@ -146,6 +143,13 @@
         [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:) withObject:deviceString waitUntilDone:NO];
         deviceString = [NSString stringWithFormat:@"App: %s %s", device.remote.appname, device.remote.appvers];
         [(NSObject *)owner performSelectorOnMainThread:@selector(logAdd:) withObject:deviceString waitUntilDone:NO];
+    }
+
+    if (device.version <= HYBRID_VERSION) {
+        framePtr = &newFrame.length;
+        frameSize = sizeof newFrame.length;
+    }
+    else {
         framePtr = &newFrame;
         frameSize = sizeof newFrame;
     }
@@ -155,7 +159,7 @@
         // event from device
         if (newFrame.length < 0) {
             // If minicap image length < 0 read remote touch(es) from the device
-            if (device.version == MINICAP_VERSION &&
+            if (device.version <= HYBRID_VERSION &&
                 fread(&newFrame, 1, sizeof newFrame, renderStream) != sizeof newFrame)
                 break;
             int touchCount = -newFrame.length;
@@ -184,7 +188,7 @@
             continue;
         }
 
-        if (device.version == MINICAP_VERSION) {
+        if (device.version <= HYBRID_VERSION) {
             if (tmpsize < newFrame.length) {
                 free(tmp);
                 tmp = malloc(newFrame.length);

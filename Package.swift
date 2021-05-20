@@ -19,7 +19,7 @@ let package = Package(
     dependencies: [],
     targets: [
         .target(name: "RemoteCapture",
-                cSettings: [.define("REMOTEPLUGIN_SERVERIPS",
+                cSettings: [.define("DEVELOPER_HOST",
                                     to: "\"\(hostname)\"")]),
         .target(name: "RemoteMovie"),
         .target(name: "RemoteUI", dependencies: ["RemoteCapture", "RemoteMovie"]),

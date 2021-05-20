@@ -31,9 +31,13 @@
 #define REMOTE_MAGIC -141414141
 #define REMOTE_MINDIFF (4*sizeof(rmencoded_t))
 #define REMOTE_COMPRESSED_OFFSET 1000000000
-#define MINICAP_VERSION 1
-#define REMOTE_VERSION 4
-#define REMOTE_NOKEY 3
+
+// Various wire formats used.
+#define REMOTE_NOKEY 3 // Original format
+#define REMOTE_VERSION 4 // Sends source file path for security check
+#define MINICAP_VERSION 1 // https://github.com/openstf/minicap#usage
+#define HYBRID_VERSION 2 // minicap but starting with "Remote" header
+
 #define REMOTE_KEY @__FILE__
 #define REMOTE_XOR 0xc5
 
@@ -381,14 +385,14 @@ static char *connectionKey;
     int32_t keylen = (int)strlen(connectionKey);
     for (NSValue *fp in newConnections) {
         FILE *writeFp = (FILE *)fp.pointerValue;
-        int headerSize = 1 + (device.version == MINICAP_VERSION && 0 ?
+        int headerSize = 1 + (device.version == MINICAP_VERSION ?
             sizeof device.minicap : sizeof device.remote);
         if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
             NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
-        else if (device.version != MINICAP_VERSION &&
+        else if (device.version == REMOTE_VERSION &&
                  fwrite(&keylen, 1, sizeof keylen, writeFp) != sizeof keylen)
             NSLog(@"%@: Could not write keylen: %s", self, strerror(errno));
-        else if (device.version != MINICAP_VERSION &&
+        else if (device.version == REMOTE_VERSION &&
                  fwrite(connectionKey, 1, keylen, writeFp) != keylen)
             NSLog(@"%@: Could not write key: %s", self, strerror(errno));
         else
@@ -485,11 +489,12 @@ static CGSize bufferSize;
         class_getInstanceMethod(UIApplication.class, @selector(in_sendEvent:)));
 
 #ifndef REMOTE_MINICAP
-    // set up device description struct
-    device.version = REMOTE_VERSION;
+#if defined(REMOTE_HYBRID)
+    device.version = HYBRID_VERSION;
 #else
-    device.version = MINICAP_VERSION;
+    device.version = REMOTE_VERSION;
 #endif
+    // prepare remote header
     *(int *)device.remote.magic = REMOTE_MAGIC;
 
     size_t size = sizeof device.remote.machine-1;
@@ -505,7 +510,8 @@ static CGSize bufferSize;
     *(float *)device.remote.scale = [screens[0] scale];
     *(int *)device.remote.isIPad =
         [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
-#if 0
+#else // REMOTE_MINICAP
+    // prepare minicap banner
     device.version = MINICAP_VERSION;
     device.minicap.headerSize = sizeof(device.version) + sizeof(device.minicap);
     *(uint32_t *)device.minicap.pid = getpid();
@@ -608,10 +614,10 @@ static NSTimeInterval mostRecentScreenUpdate;
 //        extern CGImageRef UIGetScreenImage(void);
 //        CGImageRef screenshot = UIGetScreenImage();
 //        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
-        CGFloat scale = 1.0;
-        CGSize fullSize = CGSizeMake(screenSize.width*scale, screenSize.height*scale);
-        CGRect fullBounds = CGRectMake(0, 0, fullSize.width, fullSize.height);
-        UIGraphicsBeginImageContext(fullSize);
+        CGFloat oversample = 1.0;
+        CGRect fullBounds = CGRectMake(0, 0,
+            screenSize.width*oversample, screenSize.height*oversample);
+        UIGraphicsBeginImageContext(fullBounds.size);
         for (UIWindow *window in [UIApplication sharedApplication].windows)
             if (!window.isHidden)
                 [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
@@ -630,7 +636,7 @@ static NSTimeInterval mostRecentScreenUpdate;
         }
 
         NSData *encoded;
-        if (device.version == MINICAP_VERSION)
+        if (device.version <= HYBRID_VERSION)
 #ifdef REMOTE_PNGFORMAT
             encoded = UIImagePNGRepresentation(screenshot);
 #else
@@ -680,9 +686,9 @@ static NSTimeInterval mostRecentScreenUpdate;
         for (NSValue *fp in connections) {
             FILE *writeFp = (FILE *)fp.pointerValue;
             uint32_t frameSize = (uint32_t)encoded.length;
-            int frameHeaderSize = device.version == MINICAP_VERSION ?
+            int frameHeaderSize = device.version <= HYBRID_VERSION ?
                                     sizeof frameSize : sizeof frame;
-            if (fwrite(device.version == MINICAP_VERSION ? (void *)&frameSize :
+            if (fwrite(device.version <= HYBRID_VERSION ? (void *)&frameSize :
                       (void *)&frame, 1, frameHeaderSize, writeFp) != frameHeaderSize)
                 NSLog(@"%@: Could not write frame: %s", self, strerror(errno));
             else if (fwrite(encoded.bytes, 1, encoded.length, writeFp) != encoded.length)
@@ -808,7 +814,8 @@ static NSTimeInterval mostRecentScreenUpdate;
                         objc_getClass("_UIButtonBarButton"),
                         objc_getClass("UISegmentedControl"),
                         objc_getClass("UITableViewCellEditControl"),
-                        objc_getClass("UISwipeActionStandardButton")];
+                        objc_getClass("UISwipeActionStandardButton"),
+                    ];
 
                     isButton = [currentTarget class] == [UIView class];
                     for (Class buttonClass in needsTouch)
@@ -968,7 +975,7 @@ static NSTimeInterval mostRecentScreenUpdate;
         [REMOTE_APPNAME queueCapture];
     else {
         [REMOTE_APPNAME cancelPreviousPerformRequestsWithTarget:REMOTE_APPNAME.class];
-        [REMOTE_APPNAME performSelector:@selector(queueCapture) withObject:nil afterDelay:0.8];
+        [REMOTE_APPNAME performSelector:@selector(queueCapture) withObject:nil afterDelay:0.5];
     }
 }
 
@@ -1008,7 +1015,7 @@ static NSTimeInterval mostRecentScreenUpdate;
     header.length = -(int)touches.count;
 
     NSMutableData *out = [NSMutableData new];
-    if (device.version == MINICAP_VERSION)
+    if (device.version <= HYBRID_VERSION)
         [out appendBytes:&header.length length:sizeof header.length];
 
     for (UITouch *touch in touches) {

@@ -262,6 +262,7 @@ static CGFloat windowTitleHeight = 22.;
 }
 
 - (void)logAdd:(NSString *)entry {
+    NSLog(@"logAdd: %@", entry);
     [manager callJS:@"logAdd" with:entry];
 }
 
