@@ -3,8 +3,9 @@
 //#define REMOTE_MINICAP
 #define REMOTE_PORT 1313
 //#define REMOTE_PNGFORMAT
-//#undef REMOTEPLUGIN_SERVERIPS
 //#define REMOTE_APPNAME GenericCapture
+#define REMOTE_OVERSAMPLE 2.0
+//#define REMOTE_OVERSAMPLE *(float *)device.remote.scale
 
 #define REMOTE_IMPL
 #import "RemoteCapture.h"

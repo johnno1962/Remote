@@ -41,6 +41,10 @@
 #define REMOTE_KEY @__FILE__
 #define REMOTE_XOR 0xc5
 
+#ifndef REMOTE_OVERSAMPLE
+#define REMOTE_OVERSAMPLE 1.0
+#endif
+
 #ifdef DEBUG
 #define RMLog NSLog
 #else
@@ -614,9 +618,9 @@ static NSTimeInterval mostRecentScreenUpdate;
 //        extern CGImageRef UIGetScreenImage(void);
 //        CGImageRef screenshot = UIGetScreenImage();
 //        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
-        CGFloat oversample = 1.0;
         CGRect fullBounds = CGRectMake(0, 0,
-            screenSize.width*oversample, screenSize.height*oversample);
+                                       screenSize.width*REMOTE_OVERSAMPLE,
+                                       screenSize.height*REMOTE_OVERSAMPLE);
         UIGraphicsBeginImageContext(fullBounds.size);
         for (UIWindow *window in [UIApplication sharedApplication].windows)
             if (!window.isHidden)
