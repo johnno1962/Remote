@@ -1,6 +1,6 @@
 // swift-tools-version:5.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
-//  $Id: //depot/Remote/Package.swift#10 $
+//  $Id: //depot/Remote/Package.swift#11 $
 //
 
 import PackageDescription
@@ -19,7 +19,7 @@ let package = Package(
     dependencies: [],
     targets: [
         .target(name: "RemoteCapture",
-                cSettings: [.define("REMOTEPLUGIN_SERVERIPS",
+                cSettings: [.define("DEVELOPER_HOST",
                                     to: "\"\(hostname)\"")]),
         .target(name: "RemoteMovie"),
         .target(name: "RemoteUI", dependencies: ["RemoteCapture", "RemoteMovie"]),

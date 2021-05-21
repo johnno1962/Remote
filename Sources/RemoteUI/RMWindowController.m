@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMWindowController.m#4 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMWindowController.m#5 $
 //
 
 #import "RMWindowController.h"
@@ -17,6 +17,12 @@
 
 #include <sys/ioctl.h>
 #include <net/if.h>
+
+#ifndef REMOTE_TITLE
+#define REMOTE_TITLE Remote
+#endif
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
 
 @implementation NSTextCheckingResult(groups)
 
@@ -122,8 +128,8 @@ static int serverSocket;
                 lastRMWindowController.device = [[RMDeviceController alloc] initSocket:clientSocket owner:lastRMWindowController];
                 lastRMWindowController.window.title =
                     [NSString stringWithFormat:@"%s: %s (%@)",
-                     REMOTE_APPNAME,
-                     lastRMWindowController.device->device.hostname,
+                     EXPAND_AND_QUOTE(REMOTE_TITLE),
+                     lastRMWindowController.device->device.remote.hostname,
                      ipAddr];
             });
         }
@@ -219,8 +225,9 @@ static CGFloat windowTitleHeight = 22.;
 
 - (void)resize:(NSSize)size {
     NSRect windowFrame = self.window.frame;
-    windowFrame.size = size;
-    windowFrame.size.height += windowTitleHeight;
+    CGFloat editableBorder = imageView.isEditable ? 3.0 * 2 : 0.;
+    windowFrame.size = NSMakeSize(size.width + editableBorder,
+                                  size.height + editableBorder + windowTitleHeight);
 
     aspect = 0.;
 
@@ -255,6 +262,7 @@ static CGFloat windowTitleHeight = 22.;
 }
 
 - (void)logAdd:(NSString *)entry {
+    NSLog(@"logAdd: %@", entry);
     [manager callJS:@"logAdd" with:entry];
 }
 

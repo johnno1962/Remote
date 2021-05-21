@@ -5,7 +5,7 @@
 //  Created by John Holdsworth on 21/12/2014.
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
-//  $Id: //depot/Remote/Sources/RemoteUI/include/RMDeviceController.h#3 $
+//  $Id: //depot/Remote/Sources/RemoteUI/include/RMDeviceController.h#4 $
 //
 
 #import <Cocoa/Cocoa.h>
@@ -44,6 +44,7 @@
 
 - (void)sendEvent:(NSEvent *)theEvent phase:(RMTouchPhase)phase;
 - (void)writeEvent:(const struct _rmevent *)event;
+- (void)sendText:(NSString *)text;
 - (void)shutdown;
 
 - (NSString *)snapshot:(RemoteCapture *)reference withFormat:(NSString *)format;

@@ -17,6 +17,32 @@
     int touches;
 }
 
+- (instancetype)initWithCoder:(NSCoder *)coder {
+    self = [super initWithCoder:coder];
+    self.allowsCutCopyPaste = YES;
+    self.editable = YES;
+    return self;
+}
+
+- (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
+    return YES;
+}
+
+- (IBAction)copy:(id)sender {
+    NSPasteboard *pb = [NSPasteboard pasteboardWithName:NSGeneralPboard];
+    [pb declareTypes:@[NSTIFFPboardType] owner:self];
+    NSData *tiffData = [self.image
+            TIFFRepresentationUsingCompression:NSTIFFCompressionLZW factor:0];
+    [pb setData:tiffData forType:NSTIFFPboardType];
+}
+
+- (IBAction)paste:(id)sender {
+    NSPasteboard *pb = [NSPasteboard pasteboardWithName:NSGeneralPboard];
+    NSString *text = [pb stringForType:NSStringPboardType];
+    if (text)
+        [owner.device sendText:text];
+}
+
 - (void)drawTouches:(const struct _rmevent *)newEvent {
     if(newEvent) {
         event = *newEvent;
