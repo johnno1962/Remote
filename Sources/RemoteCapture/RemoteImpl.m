@@ -10,11 +10,3 @@
 
 #define REMOTE_IMPL
 #import "RemoteCapture.h"
-
-#ifdef DEVELOPER_HOST
-@implementation RemoteCapture(AutoConnect)
-+ (void)load {
-    [self startCapture:@DEVELOPER_HOST];
-}
-@end
-#endif
