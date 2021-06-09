@@ -987,7 +987,7 @@ static NSTimeInterval mostRecentScreenUpdate;
     void *out = [self in_copyRenderLayer:a0 layerFlags:a1 commitFlags:a2];
     RMDebug(@"in_copyRenderLayer: %d %d %@ %lu", capturing, skipEcho, self,
             (unsigned long)[UIApplication sharedApplication].windows.count);
-    [self queueCapture];
+    [REMOTE_APPNAME queueCapture];
     return out;
 }
 
@@ -995,7 +995,7 @@ static NSTimeInterval mostRecentScreenUpdate;
     [self in_didCommitLayer:a0];
     RMDebug(@"in_didCommitLayer: %d %d %@ %lu", capturing, skipEcho, self,
             (unsigned long)[UIApplication sharedApplication].windows.count);
-    [self queueCapture];
+    [REMOTE_APPNAME queueCapture];
 }
 
 @end
