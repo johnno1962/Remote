@@ -41,14 +41,17 @@
 #define REMOTE_KEY @__FILE__
 #define REMOTE_XOR 0xc5
 
+// Times coordinate resolution to capture.
 #ifndef REMOTE_OVERSAMPLE
 #define REMOTE_OVERSAMPLE 1.0
 #endif
 
+// Wait for screen to settle before capture
 #ifndef REMOTE_DEFER
 #define REMOTE_DEFER 0.1
 #endif
 
+// Only wait this long for screen to settle
 #ifndef REMOTE_MAXDEFER
 #define REMOTE_MAXDEFER 0.2
 #endif
