@@ -49,8 +49,8 @@
 #define REMOTE_DEFER 0.1
 #endif
 
-#ifndef REMOTE_MAXDELAY
-#define REMOTE_MAXDELAY 0.2
+#ifndef REMOTE_MAXDEFER
+#define REMOTE_MAXDEFER 0.2
 #endif
 
 #ifdef DEBUG
@@ -969,7 +969,7 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
 
     if (connections.count && !capturing)
         dispatch_async(writeQueue, ^{
-            BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDELAY;
+            BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
             if (!flush) {
                 if (timestamp < mostRecentScreenUpdate)
                     return;
