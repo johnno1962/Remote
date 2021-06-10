@@ -967,27 +967,28 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
 }
 
 + (void)queueCapture {
-    NSTimeInterval timestamp =
-    mostRecentScreenUpdate = [NSDate timeIntervalSinceReferenceDate];
+    if (!connections.count)
+        return;
 
-    if (connections.count && !capturing)
-        dispatch_async(writeQueue, ^{
-            BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
-            if (flush)
-                lastCaptureTime = timestamp;
-            else {
-                if (timestamp < mostRecentScreenUpdate)
-                    return;
-                [NSThread sleepForTimeInterval:REMOTE_DEFER];
-            }
+    NSTimeInterval timestamp = [NSDate timeIntervalSinceReferenceDate];
+    mostRecentScreenUpdate = timestamp;
+    dispatch_async(writeQueue, ^{
+        BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
+        if (flush)
+            lastCaptureTime = timestamp;
+        else {
+            if (timestamp < mostRecentScreenUpdate)
+                return;
+            [NSThread sleepForTimeInterval:REMOTE_DEFER];
+        }
 
-            dispatch_async(dispatch_get_main_queue(), ^{
-                RMDebug(@"Capturing? %d %f", flush, mostRecentScreenUpdate);
-                if (timestamp < mostRecentScreenUpdate && !flush)
-                    return;
-                [self capture:timestamp flush:flush];
-            });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            RMDebug(@"Capturing? %d %f", flush, mostRecentScreenUpdate);
+            if (timestamp < mostRecentScreenUpdate && !flush)
+                return;
+            [self capture:timestamp flush:flush];
         });
+    });
 }
 
 @end
