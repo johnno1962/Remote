@@ -970,7 +970,9 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
     if (connections.count && !capturing)
         dispatch_async(writeQueue, ^{
             BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
-            if (!flush) {
+            if (flush)
+                lastCaptureTime = timestamp;
+            else {
                 if (timestamp < mostRecentScreenUpdate)
                     return;
                 [NSThread sleepForTimeInterval:REMOTE_DEFER];
@@ -981,7 +983,6 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
                 if (timestamp < mostRecentScreenUpdate && !flush)
                     return;
                 [self capture:timestamp flush:flush];
-                lastCaptureTime = timestamp;
             });
         });
 }
