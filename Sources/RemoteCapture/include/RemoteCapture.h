@@ -45,6 +45,14 @@
 #define REMOTE_OVERSAMPLE 1.0
 #endif
 
+#ifndef REMOTE_DEFER
+#define REMOTE_DEFER 0.1
+#endif
+
+#ifndef REMOTE_MAXDELAY
+#define REMOTE_MAXDELAY 0.2
+#endif
+
 #ifdef DEBUG
 #define RMLog NSLog
 #else
@@ -530,7 +538,7 @@ static CGSize bufferSize;
 
 static int skipEcho;
 static BOOL capturing;
-static NSTimeInterval mostRecentScreenUpdate;
+static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
 
 + (CGRect)screenBounds {
     CGRect bounds = CGRectZero;
@@ -548,10 +556,8 @@ static NSTimeInterval mostRecentScreenUpdate;
     return bounds;
 }
 
-+ (void)capture:(NSNumber *)timestamp {
-//    RMDebug(@"capture: %f %f", timestamp.doubleValue, mostRecentScreenUpdate);
-    if (timestamp.doubleValue < mostRecentScreenUpdate)
-        return;
++ (void)capture:(NSTimeInterval)timestamp flush:(BOOL)flush {
+    RMDebug(@"capture: %f %f", timestamp, mostRecentScreenUpdate);
     UIScreen *screen = [UIScreen mainScreen];
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
@@ -634,7 +640,7 @@ static NSTimeInterval mostRecentScreenUpdate;
     }
 
     dispatch_async(writeQueue, ^{
-        if (timestamp.doubleValue < mostRecentScreenUpdate) {
+        if (timestamp < mostRecentScreenUpdate && !flush) {
             frameno--;
             return;
         }
@@ -957,37 +963,39 @@ static NSTimeInterval mostRecentScreenUpdate;
     connections = nil;
 }
 
-+ (void)captureSynchronized:(NSNumber *)timestamp {
-    dispatch_async(writeQueue, ^{
-        [self performSelectorOnMainThread:@selector(capture:) withObject:timestamp waitUntilDone:NO];
-    });
-}
-
 + (void)queueCapture {
-    RMDebug(@"queueCapture");
-    [self performSelectorOnMainThread:@selector(captureSynchronized:)
-        withObject:[NSNumber numberWithDouble:mostRecentScreenUpdate =
-                    [NSDate timeIntervalSinceReferenceDate]] waitUntilDone:NO];
+    NSTimeInterval timestamp =
+    mostRecentScreenUpdate = [NSDate timeIntervalSinceReferenceDate];
+
+    if (connections.count && !capturing)
+        dispatch_async(writeQueue, ^{
+            BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDELAY;
+            if (!flush) {
+                if (timestamp < mostRecentScreenUpdate)
+                    return;
+                [NSThread sleepForTimeInterval:REMOTE_DEFER];
+            }
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                RMDebug(@"Capturing? %d %f", flush, mostRecentScreenUpdate);
+                if (timestamp < mostRecentScreenUpdate && !flush)
+                    return;
+                [self capture:timestamp flush:flush];
+                lastCaptureTime = timestamp;
+            });
+        });
 }
 
 @end
 
 @implementation CALayer(REMOTE_APPNAME)
 
-- (void)queueCapture {
-    if (connections.count && !capturing && self.class == UIWindowLayer && --skipEcho<0)
-        [REMOTE_APPNAME queueCapture];
-    else {
-        [REMOTE_APPNAME cancelPreviousPerformRequestsWithTarget:REMOTE_APPNAME.class];
-        [REMOTE_APPNAME performSelector:@selector(queueCapture) withObject:nil afterDelay:0.5];
-    }
-}
-
 - (void *)in_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2 {
     void *out = [self in_copyRenderLayer:a0 layerFlags:a1 commitFlags:a2];
     RMDebug(@"in_copyRenderLayer: %d %d %@ %lu", capturing, skipEcho, self,
             (unsigned long)[UIApplication sharedApplication].windows.count);
-    [REMOTE_APPNAME queueCapture];
+    if (self.class == UIWindowLayer)
+        [REMOTE_APPNAME queueCapture];
     return out;
 }
 
@@ -995,7 +1003,8 @@ static NSTimeInterval mostRecentScreenUpdate;
     [self in_didCommitLayer:a0];
     RMDebug(@"in_didCommitLayer: %d %d %@ %lu", capturing, skipEcho, self,
             (unsigned long)[UIApplication sharedApplication].windows.count);
-    [REMOTE_APPNAME queueCapture];
+    if (self.class == UIWindowLayer)
+        [REMOTE_APPNAME queueCapture];
 }
 
 @end
