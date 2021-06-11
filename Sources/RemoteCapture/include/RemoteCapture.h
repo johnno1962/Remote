@@ -647,6 +647,7 @@ static int frameno;
     else {
         capturing = TRUE;
         RMDebug(@"CAPTURE0");
+        NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
         CGRect screenBounds = [self screenBounds];
         CGSize screenSize = screenBounds.size;
 #if 00
@@ -679,6 +680,8 @@ static int frameno;
 #endif
         RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
         capturing = FALSE;
+        printf("Captured #%d, %.1fms\n", frameno, ([NSDate
+                  timeIntervalSinceReferenceDate]-start)*1000.);
     }
 
     dispatch_async(writeQueue, ^{
@@ -687,8 +690,11 @@ static int frameno;
             return;
         }
 
+        NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
         [self encodeAndTransmit:screenshot screenSize:screenSize
                           frame:frame buffer:buffer prevbuff:prevbuff];
+        printf("Sent #%d, %.1fms\n", frameno, ([NSDate
+                  timeIntervalSinceReferenceDate]-start)*1000.);
     });
 }
 
