@@ -38,22 +38,39 @@
 #define MINICAP_VERSION 1 // https://github.com/openstf/minicap#usage
 #define HYBRID_VERSION 2 // minicap but starting with "Remote" header
 
+// May be used for security
 #define REMOTE_KEY @__FILE__
 #define REMOTE_XOR 0xc5
 
-// Times coordinate resolution to capture.
+// Times coordinate-resolution to capture.
 #ifndef REMOTE_OVERSAMPLE
 #define REMOTE_OVERSAMPLE 1.0
 #endif
 
+#ifndef REMOTE_RETRIES
+#define REMOTE_RETRIES 3
+#endif
+
+#ifdef REMOTE_HYBRID
 // Wait for screen to settle before capture
 #ifndef REMOTE_DEFER
-#define REMOTE_DEFER 0.1
+#define REMOTE_DEFER 0.2
 #endif
 
 // Only wait this long for screen to settle
 #ifndef REMOTE_MAXDEFER
-#define REMOTE_MAXDEFER 0.2
+#define REMOTE_MAXDEFER 0.1
+#endif
+#else
+// Wait for screen to settle before capture
+#ifndef REMOTE_DEFER
+#define REMOTE_DEFER 0.0
+#endif
+
+// Only wait this long for screen to settle
+#ifndef REMOTE_MAXDEFER
+#define REMOTE_MAXDEFER 0.0
+#endif
 #endif
 
 #ifdef DEBUG
@@ -80,6 +97,7 @@ static BOOL remoteLegacy = FALSE;
 typedef unsigned rmpixel_t;
 typedef unsigned rmencoded_t;
 
+/// Shaows UITouchPhase enum but available to Appkit code in server.
 typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchBeganDouble = -1,
     RMTouchBegan = 0,
@@ -276,6 +294,8 @@ static BOOL lateJoiners;
 @end
 #endif
 
+/// The class defined by RemoteCapture is actually a buffer
+/// used to work with the memory representation of screenshots
 @implementation REMOTE_APPNAME
 
 - (instancetype)initFrame:(const struct _rmframe *)frame {
@@ -298,6 +318,8 @@ static BOOL lateJoiners;
     return self;
 }
 
+/// Made-up image encoding format
+/// @param prevbuff previous image
 - (NSData *)subtractAndEncode:(REMOTE_APPNAME *)prevbuff {
     unsigned tmpsize = 64*1024;
     rmencoded_t *tmp = (rmencoded_t *)malloc(tmpsize * sizeof *tmp), *end = tmp + tmpsize;
@@ -349,6 +371,7 @@ static BOOL lateJoiners;
     return [NSData dataWithBytesNoCopy:tmp length:(char *)out - (char *)tmp freeWhenDone:YES];
 }
 
+/// Convert buffer into an image.
 - (CGImageRef)cgImage {
     return CGBitmapContextCreateImage(cg);
 }
@@ -364,16 +387,21 @@ static NSMutableArray<NSValue *> *connections;
 static char *connectionKey;
 
 #ifdef REMOTEPLUGIN_SERVERIPS
+/// Auto-connect
 + (void)load {
     [self startCapture:@REMOTEPLUGIN_SERVERIPS];
 }
 #endif
 
+/// Initiate screen capture nd processing of events from RemoteUI server
+/// @param addrs space separated list of IPV4 addresses or hostnames
 + (void)startCapture:(NSString *)addrs {
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];
 }
 
+/// Connect in the backgrand rather than hold application up.
+/// @param addrs space separate list of IPV4 addresses or hostnames
 + (BOOL)backgroundConnect:(NSString *)addrs {
     NSMutableArray *newConnections = [NSMutableArray new];
     for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
@@ -423,6 +451,9 @@ static char *connectionKey;
     return TRUE;
 }
 
+/// Parse addres and attempt to connect to a "RemoteUI" server
+/// @param ipAddress IPV4 address or hostname
+/// @param port well known port for remote server
 + (int)connectIPV4:(const char *)ipAddress port:(in_port_t)port {
     static struct sockaddr_in remoteAddr;
 
@@ -446,6 +477,8 @@ static char *connectionKey;
     return [self connectAddr:(struct sockaddr *)&remoteAddr];
 }
 
+/// Try to connect to specified internet address
+/// @param remoteAddr parse/looked-up address
 + (int)connectAddr:(struct sockaddr *)remoteAddr {
     int remoteSocket, optval = 1;
     if ((remoteSocket = socket(remoteAddr->sa_family, SOCK_STREAM, 0)) < 0)
@@ -453,7 +486,7 @@ static char *connectionKey;
     else if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
         NSLog(@"%@: Could not set TCP_NODELAY: %s", self, strerror(errno));
     else
-        for (int retry = 0; retry<3 ; retry++) {
+        for (int retry = 0; retry<REMOTE_RETRIES ; retry++) {
             if (retry)
                 [NSThread sleepForTimeInterval:1.0];
             if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0)
@@ -472,6 +505,9 @@ static Class UIWindowLayer;
 static UITouch *realTouch;
 static CGSize bufferSize;
 
+/// Initialse static viables for capture an swizzle in replacement
+/// methods for intercepting screen updates and device events
+/// Setup device header struct sent on opening the connection.
 + (void)initCapture {
     connections = [NSMutableArray new];
     timestamp0 = [NSDate timeIntervalSinceReferenceDate];
@@ -542,7 +578,10 @@ static CGSize bufferSize;
 static int skipEcho;
 static BOOL capturing;
 static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
+static NSArray *buffers;
+static int frameno;
 
+/// Best effeort to get screen dimensions, even for iOS on M1 Mac
 + (CGRect)screenBounds {
     CGRect bounds = CGRectZero;
     while (TRUE) {
@@ -559,6 +598,9 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
     return bounds;
 }
 
+/// Capture device's screen (and discard it if there is a more recent update to the screen on the way)
+/// @param timestamp Time update to the screen was notified
+/// @param flush force transmission of screen update reguardless of timestamp
 + (void)capture:(NSTimeInterval)timestamp flush:(BOOL)flush {
     RMDebug(@"capture: %f %f", timestamp, mostRecentScreenUpdate);
     UIScreen *screen = [UIScreen mainScreen];
@@ -568,9 +610,6 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
         *(int *)device.remote.isIPad || *(float *)device.remote.scale == 3. ? 1. : screen.scale;
     __block struct _rmframe frame = {[NSDate timeIntervalSinceReferenceDate],
         {{(float)screenSize.width, (float)screenSize.height, (float)imageScale}}, 0};
-
-    static NSArray *buffers;
-    static int frameno;
 
     if (bufferSize.width != frame.width || bufferSize.height != frame.height) {
         buffers = nil;
@@ -648,6 +687,22 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
             return;
         }
 
+        [self encodeAndTransmit:screenshot screenSize:screenSize
+                          frame:frame buffer:buffer prevbuff:prevbuff];
+    });
+}
+
+/// Encode image either using Remote's run-length encoded format relaive to previous capture
+/// or in minicap format (int32_t length + jpeg image format)
+/// @param screenshot UIImage containing screen contents
+/// @param screenSize Best extimate of screen size
+/// @param frame struct  to be transmitted to server when using Remote's native format
+/// @param buffer Buffer to contain most recent screenshot
+/// @param prevbuff Buffer containing previous screenshot to relative encode
++ (void)encodeAndTransmit:(UIImage *)screenshot
+               screenSize:(CGSize)screenSize frame:(struct _rmframe)frame
+       buffer:(REMOTE_APPNAME *)buffer prevbuff:(REMOTE_APPNAME *)prevbuff
+{
         NSData *encoded;
         if (device.version <= HYBRID_VERSION)
 #ifdef REMOTE_PNGFORMAT
@@ -709,9 +764,10 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
             else
                 fflush(writeFp);
         }
-    });
 }
 
+/// Run in backgrount to process event structs coming from user interface in order to forge them
+/// @param writeFp Connection to RemoteUI server
 + (void)processEvents:(NSValue *)writeFp {
     FILE *readFp = fdopen(fileno((FILE *)writeFp.pointerValue), "r");
 
@@ -839,7 +895,7 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
                         currentTouch = realTouch ?: [UITouch new];
                     [currentTouch _setTouchIdentifier:touchIdentifier];
 
-                    RMLog(@"Target selected: %@ %d %d %d %d %lx\n%@",
+                    RMDebug(@"Target selected: %@ %d %d %d %d %lx\n%@",
                             currentTarget, isTextfield, isKeyboard, isButton,
                             currentTouch._touchIdentifier, currentTouch.hash,
                             [currentTarget recursiveDescription]);
@@ -959,6 +1015,7 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
         [self shutdown];
 }
 
+/// Stop capturing events
 + (void)shutdown {
     [remoteDelegate remoteConnected:FALSE];
     for (NSValue *writeFp in connections)
@@ -966,6 +1023,9 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
     connections = nil;
 }
 
+/// A delicate peice of code to work out when to request the capture of the screen
+/// and transmission of it's representation to the RemoteUI server. Routed through
+/// writeQueue to ensure that output does not back up on say, cellular connections.
 + (void)queueCapture {
     if (!connections.count)
         return;
@@ -974,15 +1034,20 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
     mostRecentScreenUpdate = timestamp;
     dispatch_async(writeQueue, ^{
         BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
+        int64_t delta = 0;
         if (flush)
             lastCaptureTime = timestamp;
         else {
             if (timestamp < mostRecentScreenUpdate)
                 return;
+#if 01
             [NSThread sleepForTimeInterval:REMOTE_DEFER];
+#else
+            delta = (int64_t)(REMOTE_DEFER * NSEC_PER_SEC);
+#endif
         }
 
-        dispatch_async(dispatch_get_main_queue(), ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delta), dispatch_get_main_queue(), ^{
             RMDebug(@"Capturing? %d %f", flush, mostRecentScreenUpdate);
             if (timestamp < mostRecentScreenUpdate && !flush)
                 return;
@@ -995,6 +1060,7 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
 
 @implementation CALayer(REMOTE_APPNAME)
 
+/// Methods that can be swizzled in to generate a stream of notifications the screen has been updated
 - (void *)in_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2 {
     void *out = [self in_copyRenderLayer:a0 layerFlags:a1 commitFlags:a2];
     RMDebug(@"in_copyRenderLayer: %d %d %@ %lu", capturing, skipEcho, self,
@@ -1016,6 +1082,10 @@ static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
 
 @implementation UIApplication(REMOTE_APPNAME)
 
+/// Swizzled in to capture device events and transmit them to the RemoteUI server
+/// so they can be recorded and played back using processEvents: above.
+/// Events encoded as a fake frame with negative length rather than image & size.
+/// @param anEvent actual UIEvent which contains the UITouches
 - (void)in_sendEvent:(UIEvent *)anEvent {
     [self in_sendEvent:anEvent];
     NSSet *touches = anEvent.allTouches;
