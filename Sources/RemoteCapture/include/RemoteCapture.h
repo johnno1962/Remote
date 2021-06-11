@@ -680,8 +680,8 @@ static int frameno;
 #endif
         RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
         capturing = FALSE;
-        printf("Captured #%d, %.1fms\n", frameno, ([NSDate
-                  timeIntervalSinceReferenceDate]-start)*1000.);
+        printf("Captured #%d(%d), %.1fms %f\n", frameno, flush, ([NSDate
+                  timeIntervalSinceReferenceDate]-start)*1000., timestamp);
     }
 
     dispatch_async(writeQueue, ^{
@@ -693,8 +693,8 @@ static int frameno;
         NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
         [self encodeAndTransmit:screenshot screenSize:screenSize
                           frame:frame buffer:buffer prevbuff:prevbuff];
-        printf("Sent #%d, %.1fms\n", frameno, ([NSDate
-                  timeIntervalSinceReferenceDate]-start)*1000.);
+        printf("Sent #%d(%d), %.1fms %f\n", frameno, flush, ([NSDate
+                  timeIntervalSinceReferenceDate]-start)*1000., timestamp);
     });
 }
 
@@ -1038,12 +1038,12 @@ static int frameno;
 
     NSTimeInterval timestamp = [NSDate timeIntervalSinceReferenceDate];
     mostRecentScreenUpdate = timestamp;
+    BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
+    if (flush)
+        lastCaptureTime = timestamp;
     dispatch_async(writeQueue, ^{
-        BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
         int64_t delta = 0;
-        if (flush)
-            lastCaptureTime = timestamp;
-        else {
+        if (!flush) {
             if (timestamp < mostRecentScreenUpdate)
                 return;
 #if 01
@@ -1055,7 +1055,8 @@ static int frameno;
 
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delta), dispatch_get_main_queue(), ^{
             RMDebug(@"Capturing? %d %f", flush, mostRecentScreenUpdate);
-            if (timestamp < mostRecentScreenUpdate && !flush)
+            if ((timestamp < mostRecentScreenUpdate && !flush) ||
+                timestamp < lastCaptureTime)
                 return;
             [self capture:timestamp flush:flush];
         });
