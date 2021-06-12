@@ -85,6 +85,13 @@
 #define RMDebug while(0) NSLog
 #endif
 
+#define REMOTE_NOW [NSDate timeIntervalSinceReferenceDate]
+#ifdef REMOTE_BENCHMARK
+#define RMBench printf
+#else
+#define RMBench while(0) printf
+#endif
+
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 
@@ -216,7 +223,7 @@ static BOOL lateJoiners;
 
 - (instancetype)init {
     if ((self = [super init])) {
-        _timestamp = [NSDate timeIntervalSinceReferenceDate] - timestamp0;
+        _timestamp = REMOTE_NOW - timestamp0;
     }
     return self;
 }
@@ -393,7 +400,7 @@ static char *connectionKey;
 }
 #endif
 
-/// Initiate screen capture nd processing of events from RemoteUI server
+/// Initiate screen capture and processing of events from RemoteUI server
 /// @param addrs space separated list of IPV4 addresses or hostnames
 + (void)startCapture:(NSString *)addrs {
     [self performSelectorInBackground:@selector(backgroundConnect:)
@@ -486,7 +493,7 @@ static char *connectionKey;
     else if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
         NSLog(@"%@: Could not set TCP_NODELAY: %s", self, strerror(errno));
     else
-        for (int retry = 0; retry<REMOTE_RETRIES ; retry++) {
+        for (int retry = 0; retry<REMOTE_RETRIES; retry++) {
             if (retry)
                 [NSThread sleepForTimeInterval:1.0];
             if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0)
@@ -498,20 +505,21 @@ static char *connectionKey;
     return 0;
 }
 
-static dispatch_queue_t writeQueue;
-static struct _rmdevice device;
-static NSValue *inhibitEcho;
-static Class UIWindowLayer;
-static UITouch *realTouch;
-static CGSize bufferSize;
+static dispatch_queue_t writeQueue; // queue to synchronise outgoing writes
+static struct _rmdevice device; // header sent to RemoteUI server on connect
+static NSValue *inhibitEcho; // prevent events from server going back to server
+static Class UIWindowLayer; // Use to filter for full window layer updates
+static UITouch *realTouch; // An actual UITouch recycled for forging events
+static CGSize bufferSize; // current size of off-screen image buffers
 
 /// Initialse static viables for capture an swizzle in replacement
 /// methods for intercepting screen updates and device events
 /// Setup device header struct sent on opening the connection.
 + (void)initCapture {
     connections = [NSMutableArray new];
-    timestamp0 = [NSDate timeIntervalSinceReferenceDate];
+    timestamp0 = REMOTE_NOW;
     writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
+    UIWindowLayer = objc_getClass("UIWindowLayer");
     connectionKey = strdup(REMOTE_KEY.UTF8String);
     for (size_t i=0, keylen = (int)strlen(connectionKey); i<keylen; i++)
         connectionKey[i] ^= REMOTE_XOR;
@@ -525,7 +533,6 @@ static CGSize bufferSize;
             [NSThread sleepForTimeInterval:.5];
     } while (!screens.count);
 
-    UIWindowLayer = objc_getClass("UIWindowLayer");
 #if 01
     method_exchangeImplementations(
         class_getInstanceMethod(CALayer.class, @selector(_copyRenderLayer:layerFlags:commitFlags:)),
@@ -575,11 +582,12 @@ static CGSize bufferSize;
 #endif
 }
 
-static int skipEcho;
-static BOOL capturing;
-static NSTimeInterval mostRecentScreenUpdate, lastCaptureTime;
-static NSArray *buffers;
-static int frameno;
+static int skipEcho; // Was to filter out layer commits during capture
+static BOOL capturing; // Am in the middle of capturing
+static NSTimeInterval mostRecentScreenUpdate; // last window layer update
+static NSTimeInterval lastCaptureTime; // last time capture was forced
+static NSArray *buffers; // off-screen buffers use in encoding images
+static int frameno; // count of frames captured and transmmitted
 
 /// Best effeort to get screen dimensions, even for iOS on M1 Mac
 + (CGRect)screenBounds {
@@ -608,7 +616,7 @@ static int frameno;
     CGSize screenSize = screenBounds.size;
     CGFloat imageScale = device.version == MINICAP_VERSION ? 1. :
         *(int *)device.remote.isIPad || *(float *)device.remote.scale == 3. ? 1. : screen.scale;
-    __block struct _rmframe frame = {[NSDate timeIntervalSinceReferenceDate],
+    __block struct _rmframe frame = {REMOTE_NOW,
         {{(float)screenSize.width, (float)screenSize.height, (float)imageScale}}, 0};
 
     if (bufferSize.width != frame.width || bufferSize.height != frame.height) {
@@ -631,7 +639,7 @@ static int frameno;
         RMDebug(@"CAPTURE LEGACY");
         BOOL benchmark = FALSE;
         for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-            NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
+            NSTimeInterval start = REMOTE_NOW;
 #if 0
             UIView *snap = [window snapshotViewAfterScreenUpdates:YES];
             [snap.layer renderInContext:buffer->cg];
@@ -640,14 +648,14 @@ static int frameno;
 #endif
             if(benchmark)
                 RMLog(@"%@ %f", NSStringFromCGRect(window.bounds),
-                      [NSDate timeIntervalSinceReferenceDate]-start);
+                      REMOTE_NOW-start);
         }
         skipEcho = 2;
     }
     else {
         capturing = TRUE;
         RMDebug(@"CAPTURE0");
-        NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
+        NSTimeInterval start = REMOTE_NOW;
         CGRect screenBounds = [self screenBounds];
         CGSize screenSize = screenBounds.size;
 #if 00
@@ -671,16 +679,21 @@ static int frameno;
                                        screenSize.width*REMOTE_OVERSAMPLE,
                                        screenSize.height*REMOTE_OVERSAMPLE);
         UIGraphicsBeginImageContext(fullBounds.size);
+#if 01
         for (UIWindow *window in [UIApplication sharedApplication].windows)
             if (!window.isHidden)
                 [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
+#else
+        UIView *snap = [screen snapshotViewAfterScreenUpdates:NO];
+        [snap drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
+#endif
         screenshot = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
         skipEcho = 0;
 #endif
         RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
         capturing = FALSE;
-        printf("Captured #%d(%d), %.1fms %f\n", frameno, flush, ([NSDate
+        RMBench("Captured #%d(%d), %.1fms %f\n", frameno, flush, ([NSDate
                   timeIntervalSinceReferenceDate]-start)*1000., timestamp);
     }
 
@@ -690,10 +703,10 @@ static int frameno;
             return;
         }
 
-        NSTimeInterval start = [NSDate timeIntervalSinceReferenceDate];
+        NSTimeInterval start = REMOTE_NOW;
         [self encodeAndTransmit:screenshot screenSize:screenSize
                           frame:frame buffer:buffer prevbuff:prevbuff];
-        printf("Sent #%d(%d), %.1fms %f\n", frameno, flush, ([NSDate
+        RMBench("Sent #%d(%d), %.1fms %f\n", frameno, flush, ([NSDate
                   timeIntervalSinceReferenceDate]-start)*1000., timestamp);
     });
 }
@@ -751,7 +764,7 @@ static int frameno;
             if (compress2(buff->data, &clen, (const Bytef *)encoded.bytes,
                           buff->bytes, Z_BEST_SPEED) == Z_OK && clen < encoded.length) {
                 encoded = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
-                RMLog(@"Remote: Delta image %d/%d %.1f%%", (int)encoded.length, frame.length, 100.*encoded.length/frame.length);
+                RMLog(@"%@: Delta image %d/%d %.1f%%", self, (int)encoded.length, frame.length, 100.*encoded.length/frame.length);
                 frame.length = REMOTE_COMPRESSED_OFFSET + (int)encoded.length;
             }
 #endif
@@ -780,7 +793,8 @@ static int frameno;
     struct _rmevent rpevent;
     while (fread(&rpevent, 1, sizeof rpevent, readFp) == sizeof rpevent) {
 
-        RMLog(@"Remote Event: %f %f %d", rpevent.touches[0].x, rpevent.touches[0].y, rpevent.phase);
+        RMLog(@"%@ Event: %f %f %d", self,
+              rpevent.touches[0].x, rpevent.touches[0].y, rpevent.phase);
 
         if (rpevent.phase == RMTouchMoved && capturing)
             continue;
@@ -1036,7 +1050,7 @@ static int frameno;
     if (!connections.count)
         return;
 
-    NSTimeInterval timestamp = [NSDate timeIntervalSinceReferenceDate];
+    NSTimeInterval timestamp = REMOTE_NOW;
     mostRecentScreenUpdate = timestamp;
     BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
     if (flush)
@@ -1067,7 +1081,7 @@ static int frameno;
 
 @implementation CALayer(REMOTE_APPNAME)
 
-/// Methods that can be swizzled in to generate a stream of notifications the screen has been updated
+/// Twp methods that can be swizzled in to generate a stream of notifications the screen has been updated
 - (void *)in_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2 {
     void *out = [self in_copyRenderLayer:a0 layerFlags:a1 commitFlags:a2];
     RMDebug(@"in_copyRenderLayer: %d %d %@ %lu", capturing, skipEcho, self,
@@ -1106,7 +1120,7 @@ static int frameno;
 #endif
 
     struct _rmframe header;
-    header.timestamp = [NSDate timeIntervalSinceReferenceDate];
+    header.timestamp = REMOTE_NOW;
     header.length = -(int)touches.count;
 
     NSMutableData *out = [NSMutableData new];
