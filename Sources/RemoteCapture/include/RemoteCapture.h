@@ -44,7 +44,15 @@
 
 // Times coordinate-resolution to capture.
 #ifndef REMOTE_OVERSAMPLE
+#ifndef REMOTE_HYBRID
 #define REMOTE_OVERSAMPLE 1.0
+#else
+#define REMOTE_OVERSAMPLE *(float *)device.remote.scale
+#endif
+#endif
+
+#ifndef REMOTE_JPEGQUALITY
+#define REMOTE_JPEGQUALITY 0.8
 #endif
 
 #ifndef REMOTE_RETRIES
@@ -678,18 +686,18 @@ static int frameno; // count of frames captured and transmmitted
         CGRect fullBounds = CGRectMake(0, 0,
                                        screenSize.width*REMOTE_OVERSAMPLE,
                                        screenSize.height*REMOTE_OVERSAMPLE);
-#if 0
+#if 01
         UIGraphicsBeginImageContext(fullBounds.size);
         for (UIWindow *window in [UIApplication sharedApplication].windows)
             if (!window.isHidden)
-#if 0
-                [window.layer renderInContext:UIGraphicsGetCurrentContext()];
-#else
+#if 01
                 [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
+#else
+                [window.layer renderInContext:UIGraphicsGetCurrentContext()];
 #endif
         screenshot = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
-#else
+#else // Using snapshotViewAfterScreenUpdates (not faster and loops)
         static UIView *screenshotView;
         if (!screenshotView || 1)
             screenshotView = [[UIScreen mainScreen] snapshotViewAfterScreenUpdates:NO];
@@ -697,9 +705,9 @@ static int frameno; // count of frames captured and transmmitted
 
         dispatch_async(dispatch_get_main_queue(), ^{
             NSTimeInterval start = REMOTE_NOW;
-            UIGraphicsBeginImageContext(screenshotView.bounds.size);
-//            [screenshotView.layer renderInContext:UIGraphicsGetCurrentContext()];
+            UIGraphicsBeginImageContext(fullBounds.size);
             [screenshotView drawViewHierarchyInRect:fullBounds afterScreenUpdates:YES];
+//            [screenshotView.layer renderInContext:UIGraphicsGetCurrentContext()];
             UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
             UIGraphicsEndImageContext();
             RMBench("Render #%d(%d), %.1fms %f\n", frameno, flush,
@@ -760,7 +768,7 @@ static int frameno; // count of frames captured and transmmitted
 #ifdef REMOTE_PNGFORMAT
             encoded = UIImagePNGRepresentation(screenshot);
 #else
-            encoded = UIImageJPEGRepresentation(screenshot, 0.8);
+            encoded = UIImageJPEGRepresentation(screenshot, REMOTE_JPEGQUALITY);
 #endif
         else {
             if (screenshot)
@@ -1083,16 +1091,18 @@ static int frameno; // count of frames captured and transmmitted
     if (!connections.count || capturing)// || --skipEcho > 0)
         return;
 
-    NSTimeInterval timestamp = REMOTE_NOW;
-    mostRecentScreenUpdate = timestamp;
+    NSTimeInterval timestamp =
+    mostRecentScreenUpdate = REMOTE_NOW;
     BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
     if (flush)
         lastCaptureTime = timestamp;
     dispatch_async(writeQueue, ^{
         int64_t delta = 0;
         if (!flush) {
-            if (timestamp < mostRecentScreenUpdate)
+            if (timestamp < mostRecentScreenUpdate) {
+                RMBench("Discard 1\n");
                 return;
+            }
 #if 01
             [NSThread sleepForTimeInterval:REMOTE_DEFER];
 #else
@@ -1103,9 +1113,12 @@ static int frameno; // count of frames captured and transmmitted
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delta), dispatch_get_main_queue(), ^{
             RMDebug(@"Capturing? %d %f", flush, mostRecentScreenUpdate);
             if ((timestamp < mostRecentScreenUpdate && !flush) ||
-                timestamp < lastCaptureTime)
+                timestamp < lastCaptureTime) {
+                RMBench("Discard 2 %d\n", flush);
                 return;
+            }
             [self capture:timestamp flush:flush];
+//            lastCaptureTime = timestamp;
         });
     });
 }

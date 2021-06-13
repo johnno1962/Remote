@@ -201,6 +201,10 @@
             NSImage *image = [[NSImage alloc] initWithData:imageData];
             CGRect imageRect = CGRectMake(0, 0, image.size.width, image.size.height);
             [owner updateImage:[image CGImageForProposedRect:&imageRect context: nil hints: nil]];
+            if (device.version == HYBRID_VERSION) {
+                imageRect.size.width /= *(float *)device.remote.scale;
+                imageRect.size.height /= *(float *)device.remote.scale;
+            }
             if (frame.width != imageRect.size.width)
                 dispatch_sync(dispatch_get_main_queue(), ^{
                     [owner resize:imageRect.size];
