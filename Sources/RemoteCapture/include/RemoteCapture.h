@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#29 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#36 $
 //
 
 #import <sys/sysctl.h>
