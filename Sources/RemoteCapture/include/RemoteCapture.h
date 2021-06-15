@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#35 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#37 $
 //
 
 #import <sys/sysctl.h>
@@ -47,7 +47,7 @@
 #ifndef REMOTE_HYBRID
 #define REMOTE_OVERSAMPLE 1.0
 #else
-#define REMOTE_OVERSAMPLE (*(int *)device.remote.isIPad ? 1.0 : *(float *)device.remote.scale)
+#define REMOTE_OVERSAMPLE *(float *)device.remote.scale
 #endif
 #endif
 
@@ -72,12 +72,12 @@
 #else
 // Wait for screen to settle before capture
 #ifndef REMOTE_DEFER
-#define REMOTE_DEFER 0.0
+#define REMOTE_DEFER 0.2
 #endif
 
 // Only wait this long for screen to settle
 #ifndef REMOTE_MAXDEFER
-#define REMOTE_MAXDEFER 0.0
+#define REMOTE_MAXDEFER 0.1
 #endif
 #endif
 

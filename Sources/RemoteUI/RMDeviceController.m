@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#15 $
+//  $Id: //depot/Remote/Sources/RemoteUI/RMDeviceController.m#17 $
 //
 
 #define REMOTE_IMPL
@@ -201,6 +201,10 @@
             NSImage *image = [[NSImage alloc] initWithData:imageData];
             CGRect imageRect = CGRectMake(0, 0, image.size.width, image.size.height);
             [owner updateImage:[image CGImageForProposedRect:&imageRect context: nil hints: nil]];
+            if (device.version == HYBRID_VERSION) {
+                imageRect.size.width /= *(float *)device.remote.scale;
+                imageRect.size.height /= *(float *)device.remote.scale;
+            }
             if (frame.width != imageRect.size.width)
                 dispatch_sync(dispatch_get_main_queue(), ^{
                     [owner resize:imageRect.size];
@@ -395,7 +399,7 @@
     NSPoint loc = theEvent.locationInWindow;
     float locScale = frame.height/owner.imageView.frame.size.height;
     struct _rmevent event = {
-        [NSDate timeIntervalSinceReferenceDate], phase, loc.x*locScale,
+        REMOTE_NOW, phase, loc.x*locScale,
         (owner.imageView.frame.size.height-loc.y)*locScale };
 
     [self writeEvent:&event];
@@ -409,7 +413,7 @@
     const char *chars = text.UTF8String;
     size_t len = strlen(chars);
     struct _rmevent event = {
-        [NSDate timeIntervalSinceReferenceDate], RMTouchInsertText+len, 0.0, 0.0};
+        REMOTE_NOW, RMTouchInsertText+(int)len, 0.0, 0.0};
     if (write(clientSocket, &event, sizeof event) != sizeof event ||
         write(clientSocket, chars, len) != len)
         NSLog(@"Remote: text write error");
