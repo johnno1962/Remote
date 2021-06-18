@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#29 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#38 $
 //
 
 #import <sys/sysctl.h>
@@ -62,7 +62,7 @@
 #ifdef REMOTE_HYBRID
 // Wait for screen to settle before capture
 #ifndef REMOTE_DEFER
-#define REMOTE_DEFER 0.2
+#define REMOTE_DEFER 0.5
 #endif
 
 // Only wait this long for screen to settle
@@ -72,12 +72,12 @@
 #else
 // Wait for screen to settle before capture
 #ifndef REMOTE_DEFER
-#define REMOTE_DEFER 0.0
+#define REMOTE_DEFER 0.5
 #endif
 
 // Only wait this long for screen to settle
 #ifndef REMOTE_MAXDEFER
-#define REMOTE_MAXDEFER 0.0
+#define REMOTE_MAXDEFER 0.1
 #endif
 #endif
 
@@ -740,6 +740,7 @@ static int frameno; // count of frames captured and transmmitted
 
     dispatch_async(writeQueue, ^{
         if (timestamp < mostRecentScreenUpdate && !flush) {
+            RMBench("Discard 3 %d\n", flush);
             frameno--;
             return;
         }
@@ -862,7 +863,7 @@ static int frameno; // count of frames captured and transmmitted
             static UIView *currentTarget;
             static unsigned touchIdentifier = 120;
             touchIdentifier++;
-            
+
             static UITouchesEvent *event;
             if (!event)
                 event = [[objc_getClass("UITouchesEvent") alloc] _init];
@@ -1088,7 +1089,7 @@ static int frameno; // count of frames captured and transmmitted
 /// and transmission of it's representation to the RemoteUI server. Routed through
 /// writeQueue to ensure that output does not back up on say, cellular connections.
 + (void)queueCapture {
-    if (!connections.count || capturing)// || --skipEcho > 0)
+    if (!connections.count)
         return;
 
     NSTimeInterval timestamp =
@@ -1103,7 +1104,7 @@ static int frameno; // count of frames captured and transmmitted
                 RMBench("Discard 1\n");
                 return;
             }
-#if 01
+#if 0
             [NSThread sleepForTimeInterval:REMOTE_DEFER];
 #else
             delta = (int64_t)(REMOTE_DEFER * NSEC_PER_SEC);
@@ -1112,8 +1113,7 @@ static int frameno; // count of frames captured and transmmitted
 
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delta), dispatch_get_main_queue(), ^{
             RMDebug(@"Capturing? %d %f", flush, mostRecentScreenUpdate);
-            if ((timestamp < mostRecentScreenUpdate && !flush) ||
-                timestamp < lastCaptureTime) {
+            if (timestamp < (flush ? lastCaptureTime : mostRecentScreenUpdate)) {
                 RMBench("Discard 2 %d\n", flush);
                 return;
             }
