@@ -569,7 +569,6 @@ static struct {
 static struct {
     dispatch_queue_t writeQueue; // queue to synchronise outgoing writes
     struct _rmdevice device; // header sent to RemoteUI server on connect
-    NSValue *inhibitEcho; // prevent events from server going back to server
     Class UIWindowLayer; // Use to filter for full window layer updates
     char *connectionKey; // Can be used to vet connections
     BOOL lateJoiners; // Used to flag late connections
@@ -653,6 +652,7 @@ static struct {
     BOOL capturing; // Am in the middle of capturing
     NSTimeInterval mostRecentScreenUpdate; // last window layer update
     NSTimeInterval lastCaptureTime; // last time capture was forced
+    NSValue *inhibitEcho; // prevent events from server going back to server
     UITouch *realTouch; // An actual UITouch recycled for forging events
     CGSize bufferSize; // current size of off-screen image buffers
     NSArray *buffers; // off-screen buffers use in encoding images
@@ -940,7 +940,7 @@ static struct {
                 return;
             }
 
-            core.inhibitEcho = writeFp;
+            state.inhibitEcho = writeFp;
 
             switch (rpevent.phase) {
 
@@ -1130,7 +1130,7 @@ static struct {
                     NSLog(@"%@: Invalid Event: %d", self, rpevent.phase);
             }
 
-            core.inhibitEcho = nil;
+            state.inhibitEcho = nil;
         });
     }
 
@@ -1249,8 +1249,8 @@ static struct {
 /// @param anEvent actual UIEvent which contains the UITouches
 - (void)in_sendEvent:(UIEvent *)anEvent {
     [self in_sendEvent:anEvent];
+    NSValue *incomingFp = state.inhibitEcho;
     NSSet *touches = anEvent.allTouches;
-    NSValue *incomingFp = core.inhibitEcho;
     state.realTouch = touches.anyObject;
 
 #if 0
