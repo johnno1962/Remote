@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#39 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#40 $
 //
 //  For historical reasons all the implementation is in this header file.
 //  This was te easiest way for it to be distributed for Objective-C.
@@ -253,9 +253,8 @@ struct _rmevent {
 + (void)startCapture:(NSString *)addrs;
 + (void)setFormat:(RMFormat)format port:(in_port_t)port
           retries:(int)retries sleep:(NSTimeInterval)sleep;
-+ (void)setDefer:(NSTimeInterval)defer
-        maxDefer:(NSTimeInterval)maxDefer
-       benchmark:(BOOL)benchmark;
++ (void)setDefer:(NSTimeInterval)defer maxDefer:(NSTimeInterval)maxDefer
+     jpegQuality:(double)jpegQuality benchmark:(BOOL)benchmark;
 + (void)shutdown;
 @end
 
@@ -1164,9 +1163,10 @@ static struct {
 /// @param maxDefer maximum amount of time to wait between frames
 /// @param benchmark print out time spent capturing/transmiting
 + (void)setDefer:(NSTimeInterval)defer maxDefer:(NSTimeInterval)maxDefer
-       benchmark:(BOOL)benchmark {
+     jpegQuality:(double)jpegQuality benchmark:(BOOL)benchmark {
     params.defer = defer;
     params.maxDefer = maxDefer;
+    params.jpegQuality = jpegQuality ?: REMOTE_JPEGQUALITY;
     params.benchmark = benchmark;
 }
 
