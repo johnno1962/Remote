@@ -2,8 +2,11 @@
 //  RemoteHeaders.h
 //  Remote
 //
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#11 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteHeaders.h#8 $
 //
+//  Headers extracted Using https://github.com/johnno1962/XprobePlugin
+//  Last updated for iOS 14, 2021.
+// 
 
 #import <Foundation/Foundation.h>
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
