@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#40 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#41 $
 //
 //  For historical reasons all the implementation is in this header file.
 //  This was te easiest way for it to be distributed for Objective-C.
@@ -658,11 +658,15 @@ static struct {
     int frameno; // count of frames captured and transmmitted
 } state;
 
-/// Best effeort to get screen dimensions, even for iOS on M1 Mac
++ (UIApplication *)sharedApplication {
+    return [[UIApplication class] performSelector:@selector(sharedApplication)];
+}
+
+/// Best effort to get screen dimensions, including iOS on M1 Mac
 + (CGRect)screenBounds {
     CGRect bounds = CGRectZero;
     while (TRUE) {
-        for (UIWindow *window in [UIApplication sharedApplication].windows)  {
+        for (UIWindow *window in [self sharedApplication].windows)  {
             if (window.bounds.size.height > bounds.size.height)
                 bounds = window.bounds;
         }
@@ -708,7 +712,7 @@ static struct {
     if (remoteLegacy) {
         RMDebug(@"CAPTURE LEGACY");
         BOOL benchmark = FALSE;
-        for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+        for (UIWindow *window in [[self sharedApplication] windows]) {
             NSTimeInterval start = REMOTE_NOW;
 #if 0
             UIView *snap = [window snapshotViewAfterScreenUpdates:YES];
@@ -735,7 +739,7 @@ static struct {
         [snapshotView drawViewHierarchyInRect:snapshotView.bounds afterScreenUpdates:NO];
         screenshot = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
-        BOOL displayingKeyboard = [[UIApplication sharedApplication].windows.lastObject
+        BOOL displayingKeyboard = [[self sharedApplication].windows.lastObject
                                    isKindOfClass:objc_getClass("UIRemoteKeyboardWindow")];
         static BOOL displayedKeyboard;
         if (displayingKeyboard)
@@ -750,7 +754,7 @@ static struct {
                                        screenSize.height*REMOTE_OVERSAMPLE);
 #if 01
         UIGraphicsBeginImageContext(fullBounds.size);
-        for (UIWindow *window in [UIApplication sharedApplication].windows)
+        for (UIWindow *window in [self sharedApplication].windows)
             if (!window.isHidden)
 #if 01
                 [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
@@ -794,7 +798,7 @@ static struct {
 #endif
         state.skipEcho = 0;
 #endif
-        RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
+        RMDebug(@"CAPTURE2 %@", [self sharedApplication].windows.lastObject);
         state.capturing = FALSE;
         RMBench("Captured #%d(%d), %.1fms %f\n", state.frameno, flush,
                 (REMOTE_NOW-start)*1000., timestamp);
@@ -946,7 +950,7 @@ static struct {
                 case RMTouchBeganDouble:
 
                     currentTarget = nil;
-                    for (UIWindow *window in [UIApplication sharedApplication].windows) {
+                    for (UIWindow *window in [self sharedApplication].windows) {
                         UIView *found = [window hitTest:location2 withEvent:nil];
                         if (found)
                             currentTarget = found;
@@ -991,7 +995,7 @@ static struct {
 
                 case RMTouchBegan:
                     currentTarget = nil;
-                    for (UIWindow *window in [UIApplication sharedApplication].windows) {
+                    for (UIWindow *window in [self sharedApplication].windows) {
                         UIView *found = [window hitTest:location withEvent:fakeEvent];
                         if (found)
                             currentTarget = found;
@@ -1079,7 +1083,7 @@ static struct {
                     if (currentTouch2)
                         [event _addTouch:currentTouch2 forDelayedDelivery:NO];
 
-                    [[UIApplication sharedApplication] in_sendEvent:event];
+                    [[self sharedApplication] in_sendEvent:event];
                     if (isButton)
                         [currentTarget touchesBegan:touches.currentTouches withEvent:fakeEvent];
                     break;
@@ -1094,7 +1098,7 @@ static struct {
                     [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
                     [currentTouch2 setTimestamp:timestamp];
 
-                    [[UIApplication sharedApplication] in_sendEvent:event];
+                    [[self sharedApplication] in_sendEvent:event];
                     if (isButton)
                         [currentTarget touchesMoved:touches.currentTouches withEvent:fakeEvent];
                     break;
@@ -1109,7 +1113,7 @@ static struct {
                     [currentTouch2 _setLocationInWindow:location2 resetPrevious:YES];
                     [currentTouch2 setTimestamp:timestamp];
 
-                    [[UIApplication sharedApplication] in_sendEvent:event];
+                    [[self sharedApplication] in_sendEvent:event];
                     if (isButton)
                         [currentTarget touchesEnded:touches.currentTouches withEvent:fakeEvent];
 
@@ -1225,7 +1229,7 @@ static struct {
 - (void *)in_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2 {
     void *out = [self in_copyRenderLayer:a0 layerFlags:a1 commitFlags:a2];
     RMDebug(@"in_copyRenderLayer: %d %d %@ %lu", state.capturing, state.skipEcho,
-            self, (unsigned long)[UIApplication sharedApplication].windows.count);
+            self, (unsigned long)[REMOTE_APPNAME sharedApplication].windows.count);
     if (self.class == core.UIWindowLayer)
         [REMOTE_APPNAME queueCapture];
     return out;
@@ -1234,7 +1238,7 @@ static struct {
 - (void)in_didCommitLayer:(void *)a0 {
     [self in_didCommitLayer:a0];
     RMDebug(@"in_didCommitLayer: %d %d %@ %lu", state.capturing, state.skipEcho,
-            self, (unsigned long)[UIApplication sharedApplication].windows.count);
+            self, (unsigned long)[REMOTE_APPNAME sharedApplication].windows.count);
     if (self.class == core.UIWindowLayer)
         [REMOTE_APPNAME queueCapture];
 }
