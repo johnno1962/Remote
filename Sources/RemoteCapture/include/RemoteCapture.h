@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#41 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#42 $
 //
 //  For historical reasons all the implementation is in this header file.
 //  This was te easiest way for it to be distributed for Objective-C.
@@ -159,6 +159,7 @@ typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchRegionEntered,
     RMTouchRegionMoved,
     RMTouchRegionExited,
+    RMTouchForceCapture = 99,
     RMTouchInsertText = 100
 };
 
@@ -906,6 +907,11 @@ static struct {
         RMLog(@"%@ Event: %f %f %d", self,
               rpevent.touches[0].x, rpevent.touches[0].y, rpevent.phase);
 
+        if (rpevent.phase == RMTouchForceCapture) {
+            [self queueCapture];
+            continue;
+        }
+
         if (rpevent.phase == RMTouchMoved && state.capturing)
             continue;
 
@@ -1182,7 +1188,7 @@ static struct {
     [remote.connections removeAllObjects];
 }
 
-/// A delicate peice of code to work out when to request the capture of the screen
+/// A delicate piece of code to work out when to request the capture of the screen
 /// and transmission of it's representation to the RemoteUI server. Routed through
 /// writeQueue to ensure that output does not back up on say, cellular connections.
 + (void)queueCapture {
