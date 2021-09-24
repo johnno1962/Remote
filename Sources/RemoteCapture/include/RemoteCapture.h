@@ -6,12 +6,32 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#42 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#59 $
 //
 //  For historical reasons all the implementation is in this header file.
 //  This was te easiest way for it to be distributed for Objective-C.
 //  To use, #define REMOTE_IMPL and #import this file into a <Source>.m
 //  and then call [RemoteCapture startCapture:@"hostname"] somewhere.
+//
+//  Copyright (c) 2014 John Holdsworth
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in
+//  all copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE SOFTWARE.
 //
 
 #import <sys/sysctl.h>
@@ -91,6 +111,10 @@
 #define RMDebug NSLog
 #else
 #define RMDebug while(0) NSLog
+#endif
+
+#ifndef CONNECTING_FORMAT
+#define CONNECTING_FORMAT "%@: Connecting to: %s(%s):%d %@"
 #endif
 
 #define REMOTE_NOW [NSDate timeIntervalSinceReferenceDate]
@@ -251,6 +275,7 @@ struct _rmevent {
 
 /// Public interface
 @interface REMOTE_APPNAME(Client)
++ (NSString *)revision;
 + (void)startCapture:(NSString *)addrs;
 + (void)setFormat:(RMFormat)format port:(in_port_t)port
           retries:(int)retries sleep:(NSTimeInterval)sleep;
@@ -453,6 +478,10 @@ static struct {
     NSMutableArray<NSValue *> *connections;
 } remote;
 
++ (NSString *)revision {
+    return @"$Revision: #59 $";
+}
+
 #ifdef REMOTEPLUGIN_SERVERIPS
 /// Auto-connect
 + (void)load {
@@ -495,8 +524,9 @@ static struct {
     int32_t keylen = (int)strlen(core.connectionKey);
     for (NSValue *fp in newConnections) {
         FILE *writeFp = (FILE *)fp.pointerValue;
-        int headerSize = 1 + (core.device.version == MINICAP_VERSION ?
-            sizeof core.device.minicap : sizeof core.device.remote);
+        int headerSize = sizeof core.device.version +
+            (core.device.version == MINICAP_VERSION ?
+             sizeof core.device.minicap : sizeof core.device.remote);
         if (fwrite(&core.device, 1, headerSize, writeFp) != headerSize)
             NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
         else if (core.device.version == REMOTE_VERSION &&
@@ -506,7 +536,9 @@ static struct {
                  fwrite(core.connectionKey, 1, keylen, writeFp) != keylen)
             NSLog(@"%@: Could not write key: %s", self, strerror(errno));
         else
-            [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
+            [self performSelectorInBackground:@selector(processEvents:)
+                                   withObject:fp];
+        fflush(writeFp);
     }
 
     dispatch_async(core.writeQueue, ^{
@@ -540,7 +572,9 @@ static struct {
         }
     }
 
-    NSLog(@"%@: Attempting connection to: %s:%d", self, ipAddress, port);
+    NSLog(@CONNECTING_FORMAT,
+          self, ipAddress, inet_ntoa(remoteAddr.sin_addr),
+          ntohs(remoteAddr.sin_port), [self revision]);
     return [self connectAddr:(struct sockaddr *)&remoteAddr];
 }
 
@@ -560,7 +594,9 @@ static struct {
                 return remoteSocket;
         }
 
-    NSLog(@"%@: Could not connect: %s", self, strerror(errno));
+    NSLog(@"%@: Could not connect fd #%d: '%s'",
+          self, remoteSocket, strerror(errno));
+    NSLog(@"%@: Are you running a %@ server at that address?", self, self);
     close(remoteSocket);
     return 0;
 }
@@ -630,7 +666,7 @@ static struct {
         *(float *)core.device.remote.scale = [screens[0] scale];
         *(int *)core.device.remote.isIPad =
             [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
-        *(int *)core.device.remote.protocolVersion = 100;
+        *(int *)core.device.remote.protocolVersion = 115;
     }
     else {
         // prepare minicap banner
@@ -860,10 +896,9 @@ static struct {
             NSData *keyframe = [buffer subtractAndEncode:nil];
             if (core.lateJoiners || keyframe.length < encoded.length)
                 encoded = keyframe;
-            core.lateJoiners = FALSE;
 
             frame.length = (unsigned)encoded.length;
-            if (frame.length <= REMOTE_MINDIFF) {
+            if (!core.lateJoiners && frame.length <= REMOTE_MINDIFF) {
                 RMBench("Discard 5 #%d\n", state.frameno);
                 state.frameno--;
                 return;
@@ -881,6 +916,7 @@ static struct {
 #endif
         }
 
+        core.lateJoiners = FALSE;
         for (NSValue *fp in remote.connections) {
             FILE *writeFp = (FILE *)fp.pointerValue;
             uint32_t frameSize = (uint32_t)encoded.length;
