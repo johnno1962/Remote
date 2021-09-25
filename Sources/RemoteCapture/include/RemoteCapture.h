@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#59 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#64 $
 //
 //  For historical reasons all the implementation is in this header file.
 //  This was te easiest way for it to be distributed for Objective-C.
@@ -124,22 +124,23 @@
 typedef NS_ENUM(int, RMFormat) {
     MINICAP_VERSION = 1, // https://github.com/openstf/minicap#usage
     HYBRID_VERSION = 2, // minicap but starting with "Remote" header
-    REMOTE_NOKEY = 3, // Original format
+    REMOTE_NOKEY = 3, // Original Remote format
     REMOTE_VERSION = 4 // Sends source file path for security check
 };
 
-/// tunable parameters
+/// Parameters tunable after compilation.
 static struct {
-    NSTimeInterval defer; // seconds capture waits for screen to settle
-    NSTimeInterval maxDefer; // maximum seconds capture waits
-    NSTimeInterval retrySleep; // seconds between tries
-    CGFloat jpegQuality; // JPEG compression quality factor
-    RMFormat format; // Wire format to use
-    in_port_t port; // default port for socket connect
-    BOOL benchmark; // trace when capture is postponed
-    int retries; // Number of times remote tries to connect
+    /// Connection parameters:
+    RMFormat format; /// Wire format to use
+    in_port_t port; /// default socket port for connect
+    BOOL benchmark; /// trace when capture is postponed
+    int retries; /// Number of times Remote tries to connect
+    NSTimeInterval retrySleep; /// seconds between tries
+    /// Capture parameters:
+    NSTimeInterval defer; /// seconds capture waits for screen to settle
+    NSTimeInterval maxDefer; /// maximum seconds between captures (framerate)
+    CGFloat jpegQuality; /// JPEG compression quality factor
 } params = {
-    REMOTE_DEFER, REMOTE_MAXDEFER, REMOTE_RETRYSLEEP, REMOTE_JPEGQUALITY,
 #ifdef REMOTE_MINICAP
     MINICAP_VERSION
 #else
@@ -155,7 +156,8 @@ static struct {
 #else
     FALSE,
 #endif
-    REMOTE_RETRIES,
+    REMOTE_RETRIES, REMOTE_RETRYSLEEP,
+    REMOTE_DEFER, REMOTE_MAXDEFER, REMOTE_JPEGQUALITY,
 };
 
 #import <Foundation/Foundation.h>
@@ -273,14 +275,28 @@ struct _rmevent {
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
-/// Public interface
+/// Public Objective-C interface.
 @interface REMOTE_APPNAME(Client)
+/// Version of RemoteCapture.h
 + (NSString *)revision;
+/// Connect to Remote server and start streaming screen captures.
+/// @param addrs Space separated list of hostnames to connect to.
 + (void)startCapture:(NSString *)addrs;
+/// Low level control of wire format (Called before startCapture)
+/// @param format Wire format to use.
+/// @param port Port number server is waiting on for connections.
+/// @param retries Max number of retries to connect.
+/// @param sleep Hold-off seconds between connection attempts.
 + (void)setFormat:(RMFormat)format port:(in_port_t)port
           retries:(int)retries sleep:(NSTimeInterval)sleep;
+/// Real time control of capture parameters.
+/// @param defer Seconds to defer sending capture to wait for screen to settle.
+/// @param maxDefer Max seconds to defer between captures - controls framerate.
+/// @param jpegQuality Passed to UIImageJPEGRepresentation()
+/// @param benchmark Enable extra performance measureing parameters.
 + (void)setDefer:(NSTimeInterval)defer maxDefer:(NSTimeInterval)maxDefer
      jpegQuality:(double)jpegQuality benchmark:(BOOL)benchmark;
+/// Stop capturing events
 + (void)shutdown;
 @end
 
@@ -479,7 +495,7 @@ static struct {
 } remote;
 
 + (NSString *)revision {
-    return @"$Revision: #59 $";
+    return @"$Revision: #64 $";
 }
 
 #ifdef REMOTEPLUGIN_SERVERIPS
@@ -603,11 +619,11 @@ static struct {
 
 /// Initialised once state
 static struct {
-    dispatch_queue_t writeQueue; // queue to synchronise outgoing writes
-    struct _rmdevice device; // header sent to RemoteUI server on connect
-    Class UIWindowLayer; // Use to filter for full window layer updates
-    char *connectionKey; // Can be used to vet connections
-    BOOL lateJoiners; // Used to flag late connections
+    dispatch_queue_t writeQueue; /// queue to synchronise outgoing writes
+    struct _rmdevice device; /// header sent to RemoteUI server on connect
+    Class UIWindowLayer; /// Use to filter for full window layer updates
+    char *connectionKey; /// Can be used to vet connections
+    BOOL lateJoiners; /// Used to flag late connections
 } core;
 
 /// Initialse static viables for capture an swizzle in replacement
@@ -684,15 +700,15 @@ static struct {
 
 /// Time varying state
 static struct {
-    int skipEcho; // Was to filter out layer commits during capture
-    BOOL capturing; // Am in the middle of capturing
-    NSTimeInterval mostRecentScreenUpdate; // last window layer update
-    NSTimeInterval lastCaptureTime; // last time capture was forced
-    NSValue *inhibitEcho; // prevent events from server going back to server
-    UITouch *realTouch; // An actual UITouch recycled for forging events
-    CGSize bufferSize; // current size of off-screen image buffers
-    NSArray *buffers; // off-screen buffers use in encoding images
-    int frameno; // count of frames captured and transmmitted
+    int skipEcho; /// Was to filter out layer commits during capture
+    BOOL capturing; /// Am in the middle of capturing
+    NSTimeInterval mostRecentScreenUpdate; /// last window layer update
+    NSTimeInterval lastCaptureTime; /// last time capture was forced
+    NSValue *inhibitEcho; /// prevent events from server going back to server
+    UITouch *realTouch; /// An actual UITouch recycled for forging events
+    CGSize bufferSize; /// current size of off-screen image buffers
+    NSArray *buffers; /// off-screen buffers use in encoding images
+    int frameno; /// count of frames captured and transmmitted
 } state;
 
 + (UIApplication *)sharedApplication {
@@ -1188,11 +1204,11 @@ static struct {
         [self shutdown];
 }
 
-/// Set basic connection parameters
-/// @param format wire format
-/// @param port default socket port
-/// @param retries numerb of retries to connect
-/// @param sleep hold-off interval between retries
+/// Low level control of wire format.
+/// @param format Wire format to use.
+/// @param port Port number server is waiting on for connections.
+/// @param retries Max number of retries to connect.
+/// @param sleep Hold-off seconds between connection attempts.
 + (void)setFormat:(RMFormat)format port:(in_port_t)port
           retries:(int)retries sleep:(NSTimeInterval)sleep {
     if (remote.connections)
@@ -1204,10 +1220,11 @@ static struct {
     params.retrySleep = sleep;
 }
 
-/// Tunable capture parameters
-/// @param defer amount of time to wait for screen to settle
-/// @param maxDefer maximum amount of time to wait between frames
-/// @param benchmark print out time spent capturing/transmiting
+/// Real time control of capture parameters.
+/// @param defer Seconds to defer sending capture to wait for screen to settle.
+/// @param maxDefer Max seconds to defer between captures - controls framerate.
+/// @param jpegQuality Passed to UIImageJPEGRepresentation()
+/// @param benchmark Enable extra performance measureing parameters.
 + (void)setDefer:(NSTimeInterval)defer maxDefer:(NSTimeInterval)maxDefer
      jpegQuality:(double)jpegQuality benchmark:(BOOL)benchmark {
     params.defer = defer;
