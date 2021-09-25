@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 John Holdsworth. All rights reserved.
 //
 //  Repo: https://github.com/johnno1962/Remote
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#64 $
+//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#66 $
 //
 //  For historical reasons all the implementation is in this header file.
 //  This was te easiest way for it to be distributed for Objective-C.
@@ -185,6 +185,7 @@ typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchRegionEntered,
     RMTouchRegionMoved,
     RMTouchRegionExited,
+    RMTouchTuneParameters = 98,
     RMTouchForceCapture = 99,
     RMTouchInsertText = 100
 };
@@ -495,7 +496,7 @@ static struct {
 } remote;
 
 + (NSString *)revision {
-    return @"$Revision: #64 $";
+    return @"$Revision: #66 $";
 }
 
 #ifdef REMOTEPLUGIN_SERVERIPS
@@ -961,6 +962,14 @@ static struct {
 
         if (rpevent.phase == RMTouchForceCapture) {
             [self queueCapture];
+            continue;
+        }
+
+        if (rpevent.phase == RMTouchTuneParameters) {
+            [self setDefer:rpevent.touches[0].x
+                  maxDefer:rpevent.touches[0].y
+               jpegQuality:params.jpegQuality
+                 benchmark:params.benchmark];
             continue;
         }
 
